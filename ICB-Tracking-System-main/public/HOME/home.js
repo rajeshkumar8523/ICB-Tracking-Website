@@ -1,4 +1,4 @@
-// Use the centralized config for API URL
+// Manually set the server URL
 const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
 const socket = io(API_BASE_URL);
 
