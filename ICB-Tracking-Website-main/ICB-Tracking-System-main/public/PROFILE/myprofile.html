@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="myprofile.css">
+</head>
+<body>
+    <div class="header">
+        <a href="../TOOLS/tools.html"><span class="back-arrow">←</span> Profile</a>
+    </div>
+
+    <div class="container">
+        <div class="profile-container">
+            <img id="profileImg" src="	https://assets.onecompiler.app/42ucesb3u/43dwyqbqs/How%20to%20Create%20a%20Ladder%20Workout.jpg" alt="Profile Picture" class="profile-image">
+            <label for="imageUpload" class="camera-icon">
+                <i class="fa-solid fa-camera"></i>
+            </label>
+            <input type="file" id="imageUpload" accept="image/*">
+        </div>
+        <div id="nameDisplay" class="full-name-display"></div>
+        <div class="profile-info">
+            <div class="field">
+                <input type="text" id="userId" placeholder="Enter User ID" disabled>
+            </div>
+            <div class="field">
+                <input type="text" id="fullName" placeholder="Enter Full Name" disabled>
+            </div>
+            <div class="field">
+                <input type="tel" id="phoneNumber" placeholder="Enter Phone Number" disabled>
+            </div>
+            <div class="field">
+                <input type="date" id="dob" placeholder="Select Date of Birth" disabled>
+            </div>
+            <div class="field">
+                <input type="email" id="email" placeholder="Enter Email" disabled>
+            </div>
+            <div class="field">
+                <select id="gender" disabled>
+                    <option value="" selected disabled>Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                </select>
+            </div>
+            <div class="field">
+                <input type="text" id="branchYear" placeholder="Enter Branch/Year" disabled>
+            </div>
+            <button id="editButton" class="edit-button">Edit Profile</button>
+            <button id="saveButton" class="save-button" style="display: none;">Save Changes</button>
+        </div>
+    </div>
+
+    <script src="../config.js"></script>
+    <script src="myprofile.js"></script>
+</body>
+</html>

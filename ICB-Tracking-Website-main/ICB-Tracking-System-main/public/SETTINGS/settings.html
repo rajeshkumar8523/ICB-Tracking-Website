@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings Menu</title>
+    <script src="../config.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/all.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <a href="../TOOLS/tools.html"><span class="back-arrow">←</span> Settings</a>
+    </div>
+
+    <div class="container">
+        <div class="section-title">Manage your account</div>
+
+        <!-- Notifications with Dropdown -->
+        <div class="menu-item" onclick="toggleSubmenu('notifications-menu')">
+            <i class="fa-solid fa-bell"></i>
+            <div class="menu-item-text">
+                <span class="menu-item-title">Notifications</span>
+                <span class="menu-item-subtitle">Manage your alerts</span>
+            </div>
+        </div>
+        <div id="notifications-menu" class="submenu">
+            <div class="submenu-item">
+                <span>Notifications</span>
+                <div class="toggle-btn" onclick="toggleNotifications(this)">ON</div>
+            </div>
+        </div>
+
+        <!-- Help with Dropdown -->
+        <div class="menu-item" onclick="toggleSubmenu('help-menu')">
+            <i class="fa-solid fa-circle-info"></i>
+           <div class="menu-item-text">
+                <span class="menu-item-title">Help</span>
+                <span class="menu-item-subtitle">Get support and assistance</span>
+            </div>
+        </div>
+        <div id="help-menu" class="submenu">
+            <a href="https://wa.me/7981321536" class="submenu-item">
+                <i class="fa-brands fa-whatsapp"></i> <span>Chat </span>
+            </a>
+            <a href="tel:+7981321536" class="submenu-item">
+                <i class="fa-solid fa-phone"></i> <span>Contact</span>
+            </a>
+            <a href="https://wa.me/917981321536" class="submenu-item">
+                <i class="fa-solid fa-phone-volume"></i> <span>Voice Call</span>
+            </a>
+            <a href="../APPINFO/appinfo.html" class="submenu-item">
+                <i class="fa-solid fa-info-circle"></i> <span>App Info</span>
+            </a>
+        </div>
+
+        <!-- Logout with Confirmation -->
+        <div class="menu-item" onclick="showLogoutPopup()">
+            <i class="fa-solid fa-sign-out-alt"></i>
+            <div class="menu-item-text">
+                <span class="menu-item-title">Logout</span>
+                <span class="menu-item-subtitle">Sign out of your account</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Popup -->
+    <div id="logout-popup" class="logout-popup">
+        <p>Are you sure you want to log out?</p>
+        <button class="cancel" onclick="closeLogoutPopup()">Cancel</button>
+        <button class="confirm" onclick="logout()">Logout</button>
+    </div>
+
+    <script src="../config.js"></script>
+    <script src="settings.js"></script>
+</body>
+</html>

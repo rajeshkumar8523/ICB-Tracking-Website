@@ -1,0 +1,83 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+/* Header Styling */
+.header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    font-size: 22px;
+    font-weight: bold;
+    background-color: #006171;
+    color: white;
+}
+
+.header a {
+    text-decoration: none;
+    color: white;
+    margin-left: 10%;
+}
+
+.back-arrow {
+    font-size: 35px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+/* Content Styling */
+.content {
+    padding: 20px;
+    line-height: 1.6;
+}
+
+/* Card Styling */
+.card {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 20px 0;
+}
+
+.card h2 {
+    margin-top: 0;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .header {
+        font-size: 18px;
+        padding: 15px;
+    }
+
+    .back-arrow {
+        font-size: 30px;
+    }
+
+    .content {
+        padding: 10px;
+    }
+
+    .card {
+        padding: 15px;
+        margin: 10px 0;
+    }
+
+    .card h2 {
+        font-size: 20px;
+    }
+
+    .card h3 {
+        font-size: 16px;
+    }
+
+    .card p,
+    .card li {
+        font-size: 14px;
+    }
+}

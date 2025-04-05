@@ -1,0 +1,139 @@
+/* General Styles */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background: #ecf0f3;
+}
+
+/* Register Container */
+.register-container {
+    background: #ecf0f3;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 13px 13px 20px #cbced1, -13px -13px 20px #ffffff;
+    text-align: center;
+    width: 450px;
+    margin-top: 5%;
+    margin-bottom: 5%;
+}
+
+.register-container img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 20px;
+    box-shadow: 10px 10px 15px #cbced1, -10px -10px 15px #ffffff;
+}
+
+.register-container h1 {
+    margin-bottom: 10px;
+    font-size: 1.8rem;
+    color: #333;
+}
+
+.register-container p {
+    margin-bottom: 30px;
+    font-size: 1.5rem;
+    color: #000000;
+}
+
+/* Input Fields */
+.input-container {
+    position: relative;
+    width: 100%;
+}
+
+.register-container input {
+    width: 95%;
+    padding: 15px;
+    margin: 10px 0;
+    border: none;
+    outline: none;
+    background: #ecf0f3;
+    border-radius: 50px;
+    box-shadow: inset 6px 6px 10px #cbced1, inset -6px -6px 10px #ffffff;
+    font-size: 14px;
+    color: #555;
+}
+
+/* Password Visibility Icon */
+.eye-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #777;
+}
+
+/* Button Styles */
+.register-container button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 20px;
+    border: none;
+    background: #fff9e6;
+    color: black;
+    font-size: 16px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 3px 3px 8px #cbced1, -3px -3px 8px #ffffff;
+    transition: all 0.3s ease;
+}
+
+.register-container button:hover {
+    background: #87CEEB;
+}
+
+.register-container button a {
+    text-decoration: none;
+    color: black;
+}
+
+/* Error Message */
+.error {
+    color: red;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+/* Links */
+.links {
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+.links a {
+    color: #007bff;
+    text-decoration: underline;
+    margin: 0 8px;
+}
+
+.links a:hover {
+    text-decoration: none;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .register-container {
+        padding: 30px;
+        width: 70%;
+        margin-top: 5%;
+    }
+    .register-container h1 {
+        font-size: 1.4rem;
+    }
+    .register-container input {
+        width: 90%;
+        padding: 12px;
+        margin: 8px 0;
+        font-size: 12px;
+    }
+    .register-container button {
+        font-size: 14px;
+    }
+}

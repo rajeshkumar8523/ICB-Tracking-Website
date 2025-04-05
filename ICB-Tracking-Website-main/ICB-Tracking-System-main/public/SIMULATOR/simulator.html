@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Simulator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
+    <link rel="stylesheet" href="simulator.css">
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <a href="../TOOLS/tools.html"><span class="back-arrow">←</span> Location Simulator</a>
+    </div>
+
+    <div class="container">
+        <div class="simulator-container">
+            <div class="form-section">
+                <h2>Update Bus Location</h2>
+                <form id="locationForm">
+                    <div class="form-group">
+                        <label for="busSelect">Select Bus:</label>
+                        <select id="busSelect" required>
+                            <option value="">Select a bus</option>
+                            <!-- Bus options will be populated dynamically -->
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="latitude">Latitude:</label>
+                        <input type="number" id="latitude" step="0.000001" required placeholder="e.g. 17.3850">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="longitude">Longitude:</label>
+                        <input type="number" id="longitude" step="0.000001" required placeholder="e.g. 78.4867">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="speed">Speed (km/h):</label>
+                        <input type="number" id="speed" min="0" max="120" placeholder="Optional">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="direction">Direction (degrees):</label>
+                        <input type="number" id="direction" min="0" max="359" placeholder="Optional">
+                    </div>
+                    
+                    <div class="button-group">
+                        <button type="submit" class="primary-btn">Update Location</button>
+                        <button type="button" id="useMapBtn" class="secondary-btn">Use Map</button>
+                    </div>
+                </form>
+                
+                <div class="result-message" id="resultMessage"></div>
+            </div>
+            
+            <div class="map-section" id="mapSection">
+                <h2>Click on Map to Set Location</h2>
+                <div id="map"></div>
+                <div class="button-group">
+                    <button type="button" id="confirmLocationBtn" class="primary-btn">Confirm Location</button>
+                    <button type="button" id="cancelMapBtn" class="secondary-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../config.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="../config.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="../config.js"></script>
+    <script src="simulator.js"></script>
+</body>
+</html> 

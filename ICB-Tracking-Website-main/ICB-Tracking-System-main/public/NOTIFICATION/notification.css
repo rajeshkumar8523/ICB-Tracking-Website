@@ -1,0 +1,130 @@
+body {
+    background-color: #f4f4f9;
+    color: #333;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+/* Responsive Header */
+.header {
+    display: flex;
+    align-items: center;
+    padding: 30px;
+    font-size: 22px;
+    font-weight: bold;
+    background-color: #006171;
+    color: white;
+}
+
+.header a {
+    text-decoration: none;
+    color: white;
+    margin-left: 10%;
+    font-size: 22px;
+}
+
+.back-arrow {
+    font-size: 35px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+/* Notification Container */
+.notification-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+/* Date Title */
+.date-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #006171;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+/* Notification Cards */
+.notification-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    margin: 15px 0;
+    font-size: 18px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-left: 6px solid transparent; /* Default border */
+}
+
+.green-border {
+    border-left-color: #28a745; /* Green border */
+}
+
+.red-border {
+    border-left-color: #dc3545; /* Red border */
+}
+
+.notification-left {
+    display: flex;
+    align-items: center;
+}
+
+.notification-icon {
+    font-size: 30px;
+    color: #006171;
+    margin-right: 15px;
+}
+
+.notification-text {
+    text-align: left;
+}
+
+.notification-time {
+    font-size: 16px;
+    color: #666;
+    font-weight: bold;
+}
+
+/* Responsive Styles */
+@media screen and (max-width: 768px) {
+    .header {
+        font-size: 18px;
+        padding: 15px;
+    }
+
+    .header a {
+        font-size: 16px;
+        margin-left: 3%;
+    }
+
+    .back-arrow {
+        font-size: 26px;
+    }
+
+    .notification-container {
+        max-width: 90%;
+        padding: 15px;
+    }
+
+    .notification-card {
+        font-size: 16px;
+        padding: 15px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .notification-icon {
+        font-size: 26px;
+    }
+
+    .notification-time {
+        font-size: 14px;
+    }
+}

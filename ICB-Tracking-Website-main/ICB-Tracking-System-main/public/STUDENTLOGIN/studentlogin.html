@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login</title>
+    <link rel="stylesheet" href="student.css">
+</head>
+<body>
+    <div class="login-container">
+        <img src="https://assets.onecompiler.app/42ucesb3u/433ze7s8a/download%20(1).jpeg" alt="User Icon">
+        <h1>Login</h1>
+        <p>ICB-Tracking System</p>
+        <form id="loginForm">
+            <input type="text" id="userId" placeholder="User-id" required>
+            
+            <div class="input-container">
+                <input type="password" id="password" placeholder="Password" required>
+                <span class="eye-icon" onclick="togglePassword('password')">👁️</span>
+            </div>
+
+            <button type="submit">Login</button>
+            <button type="button" onclick="guestLogin()">Guest Mode</button>
+        </form>
+        <p id="error-message" class="error"></p>
+        <p id="success-message" class="success" style="color: green; display: none;"></p>
+        
+        <div class="links">
+            <a href="../REGISTER/register.html">Register</a>
+            <a onclick="openModal()">Forgot Password?</a>
+        </div>
+    </div>
+
+    <!-- Forgot Password Popup -->
+    <div id="forgotPasswordModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Reset Password</h2>
+            <form id="resetPasswordForm">
+                <input type="text" id="resetUserId" placeholder="User ID" required>
+                <div class="input-container">
+                    <input type="password" id="resetNewPassword" placeholder="New Password" required>
+                    <span class="eye-icon" onclick="togglePassword('resetNewPassword')">👁️</span>
+                </div>
+                <div class="input-container">
+                    <input type="password" id="resetConfirmPassword" placeholder="Confirm Password" required>
+                    <span class="eye-icon" onclick="togglePassword('resetConfirmPassword')">👁️</span>
+                </div>
+                <button type="submit">Reset Password</button>
+            </form>
+            <p id="reset-error-message" class="error"></p>
+            <p id="reset-success-message" class="success" style="color: green; display: none;"></p>
+        </div>
+    </div>
+
+    <script src="../config.js"></script>
+    <script src="student.js"></script>
+</body>
+</html>

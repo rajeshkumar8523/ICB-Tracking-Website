@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bus Tracking Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="stylesheet" href="location.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <div class="header">
+    <a href="../HOME/home.html" class="back-link"><i class="fas fa-arrow-left"></i></a>
+    <h1 id="busHeader">&#128652; Bus No 01</h1>
+    <div class="icons">
+      <a href="tel:+917981321536" id="callLink" title="Call Bus Driver"><i class="fas fa-phone icon"></i></a>
+      <a href="sms:+917981321536" id="smsLink" title="Message Bus Driver"><i class="fas fa-comment icon"></i></a>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div id="map" class="map-container"></div>
+
+  <!-- Bus Info Panel -->
+  <div class="bus-info" id="busInfo">
+    <h3 id="busNumber">Bus No: 01</h3>
+    <p id="busRoute">Route: Loading route information...</p>
+    <p id="busSpeed">Speed: 0 km/h</p>
+    <p id="lastUpdate">Last update: Waiting for location data...</p>
+    <p id="locationStatus">Location tracking is active.</p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-item" onclick="highlight(this)">
+      <a href="../CONTACTUS/contactus.html"><i class="fa-solid fa-phone"></i></a>
+    </div>
+    <div class="footer-item" onclick="highlight(this)">
+      <a href="../NOTIFICATION/notification.html"><i class="fa-solid fa-bell"></i></a>
+    </div>
+    <div class="footer-item" onclick="highlight(this)">
+      <a href="../HOME/home.html"><i class="fa-solid fa-house"></i></a>
+    </div>
+    <div class="footer-item bus-icon active" onclick="highlight(this)">
+      <a href="../LOCATION/location.html"><i class="fa-solid fa-bus"></i></a>
+    </div>
+    <div class="footer-item" onclick="highlight(this)">
+      <a href="../TOOLS/tools.html"><i class="fa-solid fa-tools"></i></a>
+    </div>
+  </div>
+
+  <script src="../config.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="../config.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="../config.js"></script>
+    <script src="location.js"></script>
+</body>
+
+</html>

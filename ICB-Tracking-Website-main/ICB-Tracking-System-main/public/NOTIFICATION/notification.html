@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Notifications</title>
+    <script src="../config.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/all.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="notification.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <a href="../HOME/home.html"><span class="back-arrow">←</span> Notifications</a> 
+    </div>
+
+    <!-- Today's Notifications -->
+    <div class="notification-container">
+        <div id="today-date" class="date-title"></div>
+
+        <div class="notification-card green-border">
+            <div class="notification-left">
+                <i class="fa-solid fa-bus notification-icon"></i>
+                <span class="notification-text">Bus will arrive at your place in 5 minutes.</span>
+            </div>
+            <span class="notification-time">Now</span>
+        </div>
+        
+        <div class="notification-card red-border">
+            <div class="notification-left">
+                <i class="fa-solid fa-clock notification-icon"></i>
+                <span class="notification-text">Bus started from college.</span>
+            </div>
+            <span class="notification-time">15 mins ago</span>
+        </div>
+    </div>
+
+    <!-- Yesterday's Notifications -->
+    <div class="notification-container">
+        <div class="date-title">Yesterday</div>
+
+        <div class="notification-card red-border">
+            <div class="notification-left">
+                <i class="fa-solid fa-user-check notification-icon"></i>
+                <span class="notification-text">All students dropped off at their homes.</span>
+            </div>
+            <span class="notification-time">18 hours ago</span>
+        </div>
+
+        <div class="notification-card red-border">
+            <div class="notification-left">
+                <i class="fa-solid fa-user-plus notification-icon"></i>
+                <span class="notification-text">All students picked up from their homes.</span>
+            </div>
+            <span class="notification-time">14 hours ago</span>
+        </div>
+
+        <div class="notification-card red-border">
+            <div class="notification-left">
+                <i class="fa-solid fa-bus notification-icon"></i>
+                <span class="notification-text">Bus will arrive at your place in 5 minutes.</span>
+            </div>
+            <span class="notification-time">13 hours ago</span>
+        </div>
+
+        <div class="notification-card red-border">
+            <div class="notification-left">
+                <i class="fa-solid fa-clock notification-icon"></i>
+                <span class="notification-text">Bus started from college.</span>
+            </div>
+            <span class="notification-time">12 hours ago</span>
+        </div>
+    </div>
+
+    <script src="../config.js"></script>
+    <script src="notification.js"></script>
+
+</body>
+</html>
