@@ -1,0 +1,123 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: white;
+    color: black;
+}
+
+/* Header Styling */
+.header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    font-size: 22px;
+    font-weight: bold;
+    background-color: #006171;
+    color: white;
+}
+
+.header a {
+    text-decoration: none;
+    color: white;
+    margin-left: 10%;
+}
+
+.back-arrow {
+    font-size: 35px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+/* Container Styling */
+.container {
+    max-width: 500px;
+    margin: 20px auto;
+    padding: 10px;
+}
+
+.section-title {
+    font-size: 20px;
+    color: #000000;
+    margin-top: 25px;
+    margin-bottom: 10px;
+}
+
+/* Menu Item Styling */
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 25px;
+    border-radius: 5px;
+    transition: background 0.3s ease-in-out;
+    text-decoration: none;
+    color: black;
+}
+
+.menu-item:hover {
+    background: #ccc;
+}
+
+/* Icon Styling */
+.menu-item i {
+    font-size: 25px;
+    margin-right: 20px;
+    color: #bbb;
+}
+
+.menu-item-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-item-title {
+    font-size: 18px;
+    margin-left: 20px;
+    font-weight: bold;
+}
+
+.menu-item-subtitle {
+    font-size: 16px;
+    color: #888;
+    margin-left: 20px;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 600px) {
+    .header {
+        font-size: 18px;
+        padding: 15px;
+    }
+
+    .back-arrow {
+        font-size: 30px;
+    }
+
+    .menu-item {
+        padding: 12px;
+        margin-left: 5%;
+    }
+
+    .section-title {
+        font-size: 14px;
+        margin-top: 25px;
+        margin-bottom: 10px;
+        margin-left: 4%;
+    }
+
+    .menu-item i {
+        font-size: 24px;
+        margin-left: 5%;
+    }
+
+    .menu-item-title {
+        font-size: 15px;
+        margin-left: 6%;
+    }
+
+    .menu-item-subtitle {
+        font-size: 13px;
+        margin-left: 6%;
+    }
+}

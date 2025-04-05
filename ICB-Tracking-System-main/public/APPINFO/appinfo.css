@@ -1,0 +1,117 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: white;
+    color: black;
+}
+
+/* Header Styling */
+.header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    font-size: 22px;
+    font-weight: bold;
+    background-color: #006171;
+    color: white;
+}
+
+.header a {
+    text-decoration: none;
+    color: white;
+    margin-left: 10%;
+}
+
+.back-arrow {
+    font-size: 35px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+/* Container */
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    text-align: center;
+}
+
+/* Logo */
+.logo {
+    width: 200px;
+    height: 200px;
+    margin-bottom: 20px;
+    border-radius: 50%;
+}
+
+/* Heading */
+h1 {
+    font-size: 28px;
+    font-weight: bold;
+    color: #006171;
+    margin-bottom: 10px;
+}
+
+/* Content */
+.content {
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+/* Links */
+.links {
+    margin-top: 20px;
+    font-size: 16px;
+}
+
+.links a {
+    display: inline-block;
+    margin: 5px 10px;
+    text-decoration: none;
+    color: #006171;
+    font-weight: bold;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 600px) {
+    .header {
+        font-size: 18px;
+        padding: 15px;
+    }
+
+    .back-arrow {
+        font-size: 30px;
+    }
+
+    h1 {
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+
+    .container {
+        max-width: 100%;
+        padding: 15px;
+    }
+
+    .logo {
+        width: 150px;
+        height: 150px;
+        margin-bottom: 20px;
+        border-radius: 50%;
+    }
+
+    .content {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    .links {
+        margin-top: 10px;
+        font-size: 14px;
+    }
+
+    .links a {
+        margin: 4px 8px;
+    }
+}

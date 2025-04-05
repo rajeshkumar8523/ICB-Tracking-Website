@@ -1,0 +1,146 @@
+/* General Styles */
+body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+}
+
+/* Bus Animation */
+.bus {
+    position: relative;
+    width: 100px;
+    height: 50px;
+    background: yellow;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    animation: drive 4s linear infinite;
+}
+
+.bus::before,
+.bus::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    width: 20px;
+    height: 20px;
+    background: black;
+    border-radius: 50%;
+}
+
+.bus::before {
+    left: 10px;
+}
+
+.bus::after {
+    right: 10px;
+}
+
+.bus .window {
+    width: 20px;
+    height: 15px;
+    background: #87CEEB;
+    border-radius: 3px;
+    border: 1px solid black;
+}
+
+/* Typing Animation */
+.text {
+    font-size: 24px;
+    color: black;
+    overflow: hidden;
+    border-right: 2px solid black;
+    white-space: nowrap;
+    animation: typing 6s steps(20, end) infinite;
+    width: 0;
+    margin-left: 20px;
+}
+
+/* Next Button */
+.next-button {
+    position: absolute;
+    bottom: 150px;
+    background-color: yellow;
+    color: black;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    transition: background-color 0.3s;
+}
+
+.next-button a {
+    text-decoration: none; /* Remove underline from link */
+    color: black; /* Ensure the link text is black */
+}
+
+.next-button:hover {
+    background-color: #87CEEB;
+}
+
+.next-button a:hover {
+    color: white; /* Optional: Change text color on hover */
+}
+
+/* Keyframes */
+@keyframes drive {
+    0%, 100% {
+        transform: translateX(-10px);
+    }
+    50% {
+        transform: translateX(10px);
+    }
+}
+
+@keyframes typing {
+    0%, 100% {
+        width: 0;
+    }
+    50% {
+        width: 380px;
+    }
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .bus {
+        width: 70px;
+        height: 35px;
+    }
+
+    .bus .window {
+        width: 12px;
+        height: 10px;
+    }
+
+    .text {
+        font-size: 12px;
+        animation: typing 6s steps(15, end) infinite;
+    }
+
+    .next-button {
+        font-size: 14px;
+        padding: 6px 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    @keyframes typing {
+        0%, 100% {
+            width: 0;
+        }
+        50% {
+            width: 200px; /* Reduced width for mobile view */
+        }
+    }
+}
