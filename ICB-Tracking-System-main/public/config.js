@@ -7,7 +7,7 @@ let API_BASE_URL = 'http://localhost:5000';
 if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
   // For production, use the Vercel deployed backend URL
   // Replace this with your actual backend URL after deployment
-  API_BASE_URL = 'https://your-backend-url.vercel.app';
+  API_BASE_URL = 'https://icb-tracking-website.vercel.app';
 }
 
 // Export the config
