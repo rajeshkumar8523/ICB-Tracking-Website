@@ -2,7 +2,7 @@
     "version": 2,
     "builds": [
       {
-        "src": "app.js",
+        "src": "ICB-backend/app.js",
         "use": "@vercel/node"
       }
     ],
