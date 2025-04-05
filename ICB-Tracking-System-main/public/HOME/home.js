@@ -1,5 +1,5 @@
 // Use the centralized config for API URL
-const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
+window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
 const socket = io(API_BASE_URL);
 
 // Function to show update notification
