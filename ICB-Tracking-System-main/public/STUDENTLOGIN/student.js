@@ -93,7 +93,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     }
 
     try {
-        const response = await fetch('http://192.168.0.245:5000/api/reset-password', {
+        const response = await fetch('https://icb-tracking-website.vercel.app/api/reset-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
