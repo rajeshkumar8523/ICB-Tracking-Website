@@ -1,7 +1,3 @@
-*css*
-
-
-
 body {
     background-color: #f4f4f9;
     color: #333;
@@ -101,7 +97,7 @@ input[type="file"] {
     background: transparent;
     border: none;
     color: #000;
-    width: 100%;
+    width: 80%;
     font-size: 16px;
     padding: 10px;
     border-radius: 8px;
@@ -113,7 +109,18 @@ input[type="file"] {
     color: #000;
 }
 
-.edit-button, .save-button {
+.edit-icon {
+    cursor: pointer;
+    color: #006171;
+    font-size: 18px;
+    transition: color 0.3s;
+}
+
+.edit-icon:hover {
+    color: #06adc6;
+}
+
+button {
     width: 100%;
     padding: 15px;
     margin-top: 20px;
@@ -127,17 +134,8 @@ input[type="file"] {
     transition: all 0.3s ease;
 }
 
-.edit-button:hover {
+button:hover {
     background: #87CEEB;
-}
-
-.save-button {
-    background: #006171;
-    color: white;
-}
-
-.save-button:hover {
-    background: #06adc6;
 }
 
 @media screen and (max-width: 768px) {
@@ -166,10 +164,11 @@ input[type="file"] {
     }
 
     .field input, .field select {
+        width: 70%;
         font-size: 14px;
     }
 
-    .edit-button, .save-button {
+    button {
         font-size: 14px;
         padding: 12px;
     }
