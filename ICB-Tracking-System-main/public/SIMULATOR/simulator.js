@@ -1,5 +1,5 @@
 // Use the centralized config for API URL
-const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
+const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
 let socket;
 
 // Initialize socket connection
@@ -8,7 +8,8 @@ function initializeSocket() {
     // Check if socket.io is available
     if (typeof io === 'undefined') {
       console.error('Socket.io library not available');
-      return;
+      showResult('Socket.io library not loaded. Please check your connection.', 'error');
+      return false;
     }
     
     // Use the createSocketConnection helper from config.js if available
@@ -16,7 +17,7 @@ function initializeSocket() {
       console.log('Using APP_CONFIG to create socket connection');
       socket = window.APP_CONFIG.createSocketConnection();
     } else {
-      // Fallback to direct connection
+      // Fallback to direct connection with the deployed API URL, never use localhost
       console.log('Connecting to socket at:', API_BASE_URL);
       socket = io(API_BASE_URL, {
         path: '/socket.io',
@@ -29,6 +30,7 @@ function initializeSocket() {
     
     if (!socket) {
       console.error('Failed to create socket connection');
+      showResult('Failed to create socket connection', 'error');
       return false;
     }
     
@@ -40,6 +42,8 @@ function initializeSocket() {
     socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
       showResult(`Socket connection error: ${error.message}`, 'error');
+      // Try to use fallback HTTP API if socket fails
+      console.log('Will use HTTP API for updates instead of socket');
     });
     
     return true;
@@ -255,14 +259,19 @@ cancelMapBtn.addEventListener('click', function() {
 
 // Function to show result messages
 function showResult(message, type = 'info') {
-  resultMessage.textContent = message;
-  resultMessage.className = `message ${type}`;
-  resultMessage.style.display = 'block';
-  
-  // Hide after 5 seconds
-  setTimeout(() => {
-    resultMessage.style.display = 'none';
-  }, 5000);
+  const resultElement = document.getElementById('resultMessage');
+  if (resultElement) {
+    resultElement.textContent = message;
+    resultElement.className = `result-message ${type}`;
+    
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+      resultElement.textContent = '';
+      resultElement.className = 'result-message';
+    }, 5000);
+  } else {
+    console.log(`Result (${type}): ${message}`);
+  }
 }
 
 // Initialize
