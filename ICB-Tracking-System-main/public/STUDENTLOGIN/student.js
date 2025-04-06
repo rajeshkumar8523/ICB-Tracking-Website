@@ -70,8 +70,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    userId,
-                    password
+                    userId: userId,
+                    password: password
                 }),
                 signal: controller.signal
             });
