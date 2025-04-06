@@ -1,5 +1,5 @@
-// Use the centralized config for API URL
-const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+// Use the centralized config for API URL with explicit Vercel URL
+const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
 let socket;
 
 // Initialize socket connection
@@ -9,49 +9,75 @@ function initializeSocket() {
     if (typeof io === 'undefined') {
       console.error('Socket.io library not available');
       showResult('Socket.io library not loaded. Please check your connection.', 'error');
+      updateConnectionStatus(false);
       return false;
     }
     
-    // Use the createSocketConnection helper from config.js if available
-    if (window.APP_CONFIG && typeof window.APP_CONFIG.createSocketConnection === 'function') {
-      console.log('Using APP_CONFIG to create socket connection');
-      socket = window.APP_CONFIG.createSocketConnection();
-    } else {
-      // Fallback to direct connection with the deployed API URL, never use localhost
-      console.log('Connecting to socket at:', API_BASE_URL);
-      socket = io(API_BASE_URL, {
-        path: '/socket.io',
-        reconnectionAttempts: 5,
-        timeout: 20000,
-        transports: ['polling', 'websocket'],
-        forceNew: true
-      });
-    }
+    // Always connect to the deployment URL, never to localhost
+    console.log('Connecting to socket at:', API_BASE_URL);
+    socket = io(API_BASE_URL, {
+      path: '/socket.io',
+      reconnectionAttempts: 5,
+      timeout: 20000,
+      transports: ['polling', 'websocket'],
+      forceNew: true,
+      autoConnect: true,
+      reconnection: true
+    });
     
     if (!socket) {
       console.error('Failed to create socket connection');
       showResult('Failed to create socket connection', 'error');
+      updateConnectionStatus(false);
       return false;
     }
     
     socket.on('connect', () => {
       console.log('Socket connected successfully');
       showResult('Socket connected', 'success');
+      updateConnectionStatus(true);
     });
     
     socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
       showResult(`Socket connection error: ${error.message}`, 'error');
-      // Try to use fallback HTTP API if socket fails
-      console.log('Will use HTTP API for updates instead of socket');
+      updateConnectionStatus(false);
+      // Fall back to HTTP API
+      useFallbackHttpApi();
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected');
+      updateConnectionStatus(false);
     });
     
     return true;
   } catch (e) {
     console.error('Failed to initialize socket:', e);
     showResult(`Socket error: ${e.message}`, 'error');
+    updateConnectionStatus(false);
     return false;
   }
+}
+
+// Update connection status indicator
+function updateConnectionStatus(isConnected) {
+  const statusElement = document.getElementById('connectionStatus');
+  if (statusElement) {
+    if (isConnected) {
+      statusElement.textContent = 'Connected';
+      statusElement.className = 'connection-status status-connected';
+    } else {
+      statusElement.textContent = 'Disconnected';
+      statusElement.className = 'connection-status status-disconnected';
+    }
+  }
+}
+
+// Function to use HTTP API instead of socket
+function useFallbackHttpApi() {
+  console.log('Using HTTP API fallback instead of Socket.io');
+  showResult('Using HTTP API instead of real-time connection', 'warning');
 }
 
 // Default coordinates (center of Hyderabad)
@@ -138,6 +164,7 @@ function updateBusLocation(busNumber, latitude, longitude, speed, direction) {
     if (speed) data.speed = speed;
     if (direction) data.direction = direction;
     
+    // First update via HTTP API
     fetch(`${API_BASE_URL}/api/trackers`, {
         method: 'POST',
         headers: {
@@ -150,8 +177,17 @@ function updateBusLocation(busNumber, latitude, longitude, speed, direction) {
         if (result.status === 'success') {
             showMessage(`Bus ${busNumber} location updated successfully!`);
             
-            // Also emit socket event
-            socket.emit('locationUpdate', data);
+            // Try socket emission if socket is connected
+            if (socket && socket.connected) {
+                try {
+                    socket.emit('locationUpdate', data);
+                    console.log('Location update sent via socket');
+                } catch (socketError) {
+                    console.error('Socket emission failed:', socketError);
+                }
+            } else {
+                console.log('Socket not connected, using HTTP API only');
+            }
         } else {
             throw new Error(result.message || 'Failed to update location');
         }
@@ -263,11 +299,11 @@ function showResult(message, type = 'info') {
   if (resultElement) {
     resultElement.textContent = message;
     resultElement.className = `result-message ${type}`;
+    resultElement.style.display = 'block';
     
     // Auto hide after 5 seconds
     setTimeout(() => {
-      resultElement.textContent = '';
-      resultElement.className = 'result-message';
+      resultElement.style.display = 'none';
     }, 5000);
   } else {
     console.log(`Result (${type}): ${message}`);
