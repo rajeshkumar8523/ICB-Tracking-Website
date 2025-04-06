@@ -40,7 +40,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
 
     try {
         // Sending data to the server
-        const response = await fetch('http://192.168.0.245:5000/api/register', {
+        const response = await fetch('https://icb-tracking-website.vercel.app/api/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
