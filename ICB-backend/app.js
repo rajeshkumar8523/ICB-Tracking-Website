@@ -11,7 +11,11 @@ const app = express();
 const server = http.createServer(app);
 
 // Add CORS middleware
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true
+}));
 
 // Basic middleware
 app.use(express.json());
@@ -176,8 +180,13 @@ mongoose
 const io = socketio(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
+  transports: ['polling', 'websocket'],
+  allowEIO3: true,
+  path: '/socket.io'
 });
 
 // Schemas and Models
@@ -187,9 +196,6 @@ const userSchema = new mongoose.Schema({
   contact: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  dob: { type: String },
-  gender: { type: String },
-  branchYear: { type: String },
   ipAddress: { type: String },
   lastLogin: { type: Date },
   role: { type: String, enum: ["user", "driver", "admin"], default: "user" },
@@ -322,7 +328,7 @@ io.on("connection", (socket) => {
 // API Routes (simplified without authentication)
 app.post("/api/register", async (req, res, next) => {
   try {
-    const { userId, name, contact, email, password, role, dob, gender, branchYear } = req.body;
+    const { userId, name, contact, email, password, role } = req.body;
     
     if (!isDbConnected) {
       // Store in mock data if DB is not connected
@@ -340,9 +346,6 @@ app.post("/api/register", async (req, res, next) => {
         contact, 
         email, 
         password,
-        dob,
-        gender,
-        branchYear,
         ipAddress: getClientIp(req),
         lastLogin: new Date(),
         role: role || "user"
@@ -357,9 +360,6 @@ app.post("/api/register", async (req, res, next) => {
             userId: newUser.userId,
             name: newUser.name,
             email: newUser.email,
-            dob: newUser.dob,
-            gender: newUser.gender,
-            branchYear: newUser.branchYear,
             role: newUser.role,
           },
         },
@@ -380,9 +380,6 @@ app.post("/api/register", async (req, res, next) => {
       contact,
       email,
       password,
-      dob,
-      gender,
-      branchYear,
       ipAddress,
       lastLogin: new Date(),
       role: role || "user",
@@ -394,9 +391,6 @@ app.post("/api/register", async (req, res, next) => {
           userId: newUser.userId,
           name: newUser.name,
           email: newUser.email,
-          dob: newUser.dob,
-          gender: newUser.gender,
-          branchYear: newUser.branchYear,
           role: newUser.role,
         },
       },
@@ -543,9 +537,6 @@ app.get("/api/me/:userId", async (req, res, next) => {
             userId: user.userId,
             name: user.name,
             email: user.email,
-            dob: user.dob,
-            gender: user.gender,
-            branchYear: user.branchYear,
             role: user.role,
           },
         },
@@ -566,9 +557,6 @@ app.get("/api/me/:userId", async (req, res, next) => {
           userId: user.userId,
           name: user.name,
           email: user.email,
-          dob: user.dob,
-          gender: user.gender,
-          branchYear: user.branchYear,
           role: user.role,
         },
       },
@@ -881,6 +869,15 @@ app.get("/api/trackers/history/:busNumber", async (req, res, next) => {
   }
 });
 
+// Add API route for Socket.io status/health check
+app.get('/api/socket-status', (req, res) => {
+  res.status(200).json({ 
+    status: 'success', 
+    socketActive: true,
+    serverTime: new Date().toISOString()
+  });
+});
+
 // Route for serving index HTML
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, '../ICB-Tracking-System-main/public/INDEX/index.html'));
@@ -920,6 +917,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Socket.IO server path: ${io.path()}`);
 });
 
 // Error handling
