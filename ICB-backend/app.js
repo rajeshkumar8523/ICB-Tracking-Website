@@ -187,9 +187,6 @@ const userSchema = new mongoose.Schema({
   contact: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  dob: { type: String },
-  gender: { type: String },
-  branchYear: { type: String },
   ipAddress: { type: String },
   lastLogin: { type: Date },
   role: { type: String, enum: ["user", "driver", "admin"], default: "user" },
@@ -322,7 +319,7 @@ io.on("connection", (socket) => {
 // API Routes (simplified without authentication)
 app.post("/api/register", async (req, res, next) => {
   try {
-    const { userId, name, contact, email, password, role, dob, gender, branchYear } = req.body;
+    const { userId, name, contact, email, password, role } = req.body;
     
     if (!isDbConnected) {
       // Store in mock data if DB is not connected
@@ -340,9 +337,6 @@ app.post("/api/register", async (req, res, next) => {
         contact, 
         email, 
         password,
-        dob,
-        gender,
-        branchYear,
         ipAddress: getClientIp(req),
         lastLogin: new Date(),
         role: role || "user"
@@ -357,9 +351,6 @@ app.post("/api/register", async (req, res, next) => {
             userId: newUser.userId,
             name: newUser.name,
             email: newUser.email,
-            dob: newUser.dob,
-            gender: newUser.gender,
-            branchYear: newUser.branchYear,
             role: newUser.role,
           },
         },
@@ -380,9 +371,6 @@ app.post("/api/register", async (req, res, next) => {
       contact,
       email,
       password,
-      dob,
-      gender,
-      branchYear,
       ipAddress,
       lastLogin: new Date(),
       role: role || "user",
@@ -394,9 +382,6 @@ app.post("/api/register", async (req, res, next) => {
           userId: newUser.userId,
           name: newUser.name,
           email: newUser.email,
-          dob: newUser.dob,
-          gender: newUser.gender,
-          branchYear: newUser.branchYear,
           role: newUser.role,
         },
       },
@@ -543,9 +528,6 @@ app.get("/api/me/:userId", async (req, res, next) => {
             userId: user.userId,
             name: user.name,
             email: user.email,
-            dob: user.dob,
-            gender: user.gender,
-            branchYear: user.branchYear,
             role: user.role,
           },
         },
@@ -566,9 +548,6 @@ app.get("/api/me/:userId", async (req, res, next) => {
           userId: user.userId,
           name: user.name,
           email: user.email,
-          dob: user.dob,
-          gender: user.gender,
-          branchYear: user.branchYear,
           role: user.role,
         },
       },
