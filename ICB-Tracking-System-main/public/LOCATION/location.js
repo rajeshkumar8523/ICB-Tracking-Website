@@ -1,5 +1,5 @@
 // Use the centralized config for API URL
-API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
 
 // Get bus number from URL or default to 1
 const urlParams = new URLSearchParams(window.location.search);
