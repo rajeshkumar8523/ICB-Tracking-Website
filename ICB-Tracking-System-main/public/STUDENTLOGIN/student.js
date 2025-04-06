@@ -72,16 +72,18 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     }
 
     try {
-        // Use the Vercel deployment URL
-        const API_BASE_URL = 'https://icb-tracking-website.vercel.app/api/login';
+        // Use the Vercel deployment URL (fix the endpoint URL)
+        const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+        const LOGIN_ENDPOINT = '/api/login';
         
-        console.log(`Authenticating with: ${API_BASE_URL}/api/login`);
+        const apiUrl = `${API_BASE_URL}${LOGIN_ENDPOINT}`;
+        console.log(`Authenticating with: ${apiUrl}`);
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/login`, {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -179,14 +181,18 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     }
 
     try {
-        // Use the Vercel deployment URL
+        // Use the Vercel deployment URL (fix the endpoint URL)
         const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+        const RESET_ENDPOINT = '/api/reset-password';
+        
+        const apiUrl = `${API_BASE_URL}${RESET_ENDPOINT}`;
+        console.log(`Resetting password at: ${apiUrl}`);
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
