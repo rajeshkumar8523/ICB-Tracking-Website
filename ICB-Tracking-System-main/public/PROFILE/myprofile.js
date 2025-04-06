@@ -1,7 +1,6 @@
-// *js*
 
-
-const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+// Use the centralized config for API URL
+const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/profile` : 'https://icb-tracking-website.vercel.app/api/profile';
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('imageUpload').addEventListener('change', uploadImage);
@@ -13,38 +12,30 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function loadProfile() {
-    // Get userId from localStorage
-    const userId = localStorage.getItem('userId');
-    if (!userId) {
-        alert('Please login first!');
-        window.location.href = '../STUDENTLOGIN/studentlogin.html';
-        return;
+    // First check localStorage for quick display
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+        const profile = JSON.parse(savedProfile);
+        displayProfile(profile);
     }
 
     try {
-        // Fetch user data from the server
-        const response = await fetch(`${API_BASE_URL}/api/me/${userId}`);
+        // Then fetch from server for most up-to-date data
+        const response = await fetch(`${API_URL}/get`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
 
-        if (!response.ok) {
-            throw new Error('Failed to fetch profile data');
-        }
-
-        const data = await response.json();
-        if (data.status === 'success' && data.data.user) {
-            displayProfile(data.data.user);
-            // Store in localStorage for future use
-            localStorage.setItem('userProfile', JSON.stringify(data.data.user));
-        } else {
-            throw new Error('Invalid response format');
+        if (response.ok) {
+            const serverProfile = await response.json();
+            displayProfile(serverProfile);
+            // Update localStorage with fresh data
+            localStorage.setItem('userProfile', JSON.stringify(serverProfile));
         }
     } catch (error) {
-        console.error('Error loading profile:', error);
-        
-        // If API fails, try loading from localStorage as fallback
-        const savedProfile = localStorage.getItem('userProfile');
-        if (savedProfile) {
-            displayProfile(JSON.parse(savedProfile));
-        }
+        console.error('Error fetching profile:', error);
     }
 }
 
@@ -53,11 +44,11 @@ function displayProfile(profile) {
 
     // Set all field values
     if (profile.userId) document.getElementById('userId').value = profile.userId;
-    if (profile.name) {
-        document.getElementById('fullName').value = profile.name;
-        document.getElementById('nameDisplay').textContent = profile.name.toUpperCase();
+    if (profile.fullName) {
+        document.getElementById('fullName').value = profile.fullName;
+        document.getElementById('nameDisplay').textContent = profile.fullName.toUpperCase();
     }
-    if (profile.contact) document.getElementById('phoneNumber').value = profile.contact;
+    if (profile.phoneNumber) document.getElementById('phoneNumber').value = profile.phoneNumber;
     if (profile.dob) document.getElementById('dob').value = profile.dob;
     if (profile.email) document.getElementById('email').value = profile.email;
     if (profile.gender) document.getElementById('gender').value = profile.gender;
@@ -102,8 +93,8 @@ function disableEditing() {
 async function saveProfile() {
     const userProfile = {
         userId: document.getElementById('userId').value,
-        name: document.getElementById('fullName').value,
-        contact: document.getElementById('phoneNumber').value,
+        fullName: document.getElementById('fullName').value,
+        phoneNumber: document.getElementById('phoneNumber').value,
         dob: document.getElementById('dob').value,
         email: document.getElementById('email').value,
         gender: document.getElementById('gender').value,
@@ -112,30 +103,25 @@ async function saveProfile() {
     };
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/profile/update`, {
+        const response = await fetch(API_URL, {
             method: "POST",
             headers: { 
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
             body: JSON.stringify(userProfile),
         });
 
         if (response.ok) {
             const updatedProfile = await response.json();
-            localStorage.setItem('userProfile', JSON.stringify(updatedProfile.data.user));
-            displayProfile(updatedProfile.data.user);
+            localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+            displayProfile(updatedProfile);
             disableEditing();
             alert("Profile saved successfully!");
         } else {
-            // If server update fails, at least update local storage
-            localStorage.setItem('userProfile', JSON.stringify(userProfile));
-            disableEditing();
-            alert("Profile saved locally (offline mode)");
+            throw new Error('Failed to save profile');
         }
     } catch (error) {
-        // Save to localStorage if API fails
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        disableEditing();
-        alert("Profile saved locally (offline mode)");
+        alert(`Error: ${error.message}`);
     }
 }
