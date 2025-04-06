@@ -34,12 +34,70 @@ loadingOverlay.innerHTML = '<div class="spinner"></div><p>Loading bus location..
 document.body.appendChild(loadingOverlay);
 
 // Connect to Socket.io server
-const socket = io(API_BASE_URL);
+let socket;
 
-// Join the bus room after connecting
-socket.on('connect', () => {
-  socket.emit('joinBus', busNumber);
-});
+// Initialize socket connection using config if available
+function initializeSocket() {
+  try {
+    // Check if socket.io is available
+    if (typeof io === 'undefined') {
+      console.error('Socket.io library not available');
+      return;
+    }
+    
+    // Use the createSocketConnection helper from config.js if available
+    if (window.APP_CONFIG && typeof window.APP_CONFIG.createSocketConnection === 'function') {
+      console.log('Using APP_CONFIG to create socket connection');
+      socket = window.APP_CONFIG.createSocketConnection();
+    } else {
+      // Fallback to direct connection
+      console.log('Connecting to socket at:', API_BASE_URL);
+      socket = io(API_BASE_URL, {
+        path: '/socket.io',
+        reconnectionAttempts: 5,
+        timeout: 20000,
+        transports: ['polling', 'websocket'],
+        forceNew: true
+      });
+    }
+    
+    if (!socket) {
+      console.error('Failed to create socket connection');
+      return;
+    }
+    
+    // Join the bus room after connecting
+    socket.on('connect', () => {
+      console.log('Socket connected, joining bus room:', busNumber);
+      socket.emit('joinBus', busNumber);
+    });
+    
+    // Listen for real-time updates
+    socket.on('busLocation', (data) => {
+      if (data.busNumber === busNumber) {
+        console.log('Received real-time location for bus:', busNumber);
+        updateBusPosition(data);
+        hideLoadingOverlay();
+      }
+    });
+    
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      // On connection error, fallback to API polling
+      fetchLatestLocation();
+    });
+    
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
+      // On socket error, fallback to API polling
+      fetchLatestLocation();
+    });
+  } catch (e) {
+    console.error('Failed to initialize socket:', e);
+    // On any socket initialization error, fallback to API polling
+    fetchLatestLocation();
+  }
+}
 
 // Update header with bus number
 document.getElementById('busHeader').textContent = `🚌 Bus No ${busNumber}`;
@@ -231,14 +289,6 @@ function updateBusPosition(data) {
   hasLoadedLocation = true;
 }
 
-// Listen for real-time updates
-socket.on('busLocation', (data) => {
-  if (data.busNumber === busNumber) {
-    updateBusPosition(data);
-    hideLoadingOverlay();
-  }
-});
-
 // Highlight active footer item
 function highlight(element) {
   document.querySelectorAll(".footer-item").forEach(item => {
@@ -251,10 +301,9 @@ function highlight(element) {
 document.addEventListener('DOMContentLoaded', () => {
   fetchBusData();
   fetchLatestLocation();
+  initializeSocket();
   
-  // Set a timeout to hide loading overlay even if we can't get location
-  setTimeout(hideLoadingOverlay, 10000);
-  
-  // Periodically check for location updates
-  setInterval(fetchLatestLocation, 10000); // Check every 10 seconds
+  // Set up backup polling for location updates (every 30 seconds)
+  // This ensures we continue getting updates even if socket fails
+  setInterval(fetchLatestLocation, 30000);
 });
