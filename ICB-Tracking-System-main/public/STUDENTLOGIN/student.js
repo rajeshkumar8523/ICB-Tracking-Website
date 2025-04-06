@@ -16,19 +16,6 @@ const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
 const LOGIN_ENDPOINT = '/api/login';
 const RESET_ENDPOINT = '/api/reset-password';
 const STATUS_ENDPOINT = '/api/status';
-const REGISTER_ENDPOINT = '/api/register';
-
-// MongoDB connection - for direct reference only, actual connection handled by server
-const DB_URI = 'mongodb+srv://rajesh:rajesh@cluster0.cqkgbx3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
-
-// For development and testing
-const DEFAULT_USER = {
-  userId: "icbadmin",
-  name: "ICB Admin",
-  email: "admin@example.com",
-  password: "admin123",
-  role: "admin"
-};
 
 function openModal() {
     document.getElementById("forgotPasswordModal").style.display = "flex";
@@ -65,49 +52,11 @@ async function checkServerStatus() {
         if (response.ok) {
             const data = await response.json();
             console.log("Server status:", data);
-            
-            // If database is not connected, try to register a default admin user
-            if (!data.dbConnected) {
-                console.warn("Database not connected. Using fallback authentication.");
-                await createDefaultUser();
-            }
-            
             return data.dbConnected;
         }
         return false;
     } catch (error) {
         console.error("Error checking server status:", error);
-        return false;
-    }
-}
-
-// Create a default user for emergency access
-async function createDefaultUser() {
-    try {
-        console.log("Attempting to create default admin user...");
-        const response = await fetch(`${API_BASE_URL}${REGISTER_ENDPOINT}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(DEFAULT_USER),
-            credentials: 'include'
-        });
-        
-        const data = await response.json();
-        if (response.ok) {
-            console.log("Default admin user created successfully");
-            return true;
-        } else if (response.status === 400 && data.message.includes("already exists")) {
-            console.log("Default admin user already exists");
-            return true;
-        } else {
-            console.error("Failed to create default admin user:", data.message);
-            return false;
-        }
-    } catch (error) {
-        console.error("Error creating default admin user:", error);
         return false;
     }
 }
@@ -120,30 +69,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         localStorage.removeItem('registeredUserId'); // Clear it after use
     }
     
-    // Check server status and show admin credentials if needed
-    const isDbConnected = await checkServerStatus();
-    if (!isDbConnected) {
-        console.warn("MongoDB connection issue detected. Using fallback authentication.");
-        
-        // Add admin credentials hint
-        const loginForm = document.getElementById('loginForm');
-        if (loginForm) {
-            const helpText = document.createElement('div');
-            helpText.innerHTML = `
-                <div style="margin-top: 10px; padding: 8px; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px;">
-                    <p style="color: #ad6800; margin: 0 0 5px 0;"><strong>⚠️ Database Connection Issue</strong></p>
-                    <p style="color: #5c3c00; margin: 0 0 5px 0; font-size: 13px;">
-                        The app is running in fallback mode. Use these emergency credentials:
-                    </p>
-                    <p style="color: #5c3c00; margin: 0; font-size: 12px;">
-                        Username: <strong>${DEFAULT_USER.userId}</strong><br>
-                        Password: <strong>${DEFAULT_USER.password}</strong>
-                    </p>
-                </div>
-            `;
-            loginForm.appendChild(helpText);
-        }
-    }
+    // Check server status
+    await checkServerStatus();
 });
 
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
@@ -171,11 +98,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     if (submitButton) submitButton.disabled = true;
     
     try {
-        // Check if we need to use default admin credentials due to DB connection issues
-        const isDefaultAdmin = (userId === DEFAULT_USER.userId && password === DEFAULT_USER.password);
-        if (isDefaultAdmin) {
-            await createDefaultUser();
-        }
+        // First check database status
+        await checkServerStatus();
         
         const apiUrl = `${API_BASE_URL}${LOGIN_ENDPOINT}`;
         console.log(`Authenticating with: ${apiUrl}`);
@@ -190,16 +114,19 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 20000);
                 
+                // Prepare login data
+                const loginData = {
+                    userId: userId.trim(),
+                    password: password
+                };
+                
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({
-                        userId: userId.trim(),
-                        password: password
-                    }),
+                    body: JSON.stringify(loginData),
                     credentials: 'include',
                     signal: controller.signal
                 });
@@ -216,15 +143,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                     throw new Error("Unable to parse server response. Please try again.");
                 }
                 
-                // Handle 401 unauthorized errors - try one more time for default user
+                // Handle 401 unauthorized errors
                 if (response.status === 401) {
-                    if (isDefaultAdmin && retryCount === 0) {
-                        console.log("Retrying with default admin after recreating user...");
-                        await createDefaultUser();
-                        retryCount++;
-                        continue;
-                    }
-                    
                     errorMessage.textContent = "Invalid username or password. Please try again.";
                     if (submitButton) submitButton.disabled = false;
                     return;
@@ -236,11 +156,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 
                 success = true;
                 
-                // If we're using the default admin due to DB issues, create a special localStorage state
-                if (isDefaultAdmin) {
-                    localStorage.setItem('usingDefaultAdmin', 'true');
-                }
-                
                 // Update auth status
                 if (data && data.data && data.data.user) {
                     // Save user info to localStorage for persistence
@@ -248,7 +163,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                     localStorage.setItem('userId', data.data.user.userId);
                     localStorage.setItem('userRole', data.data.user.role || 'user');
                     localStorage.setItem('userName', data.data.user.name);
-                    localStorage.setItem('dbConnected', 'true');
                     
                     console.log("User authenticated successfully:", data.data.user.userId);
                 } else {
