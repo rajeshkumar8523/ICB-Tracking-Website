@@ -184,9 +184,14 @@ const io = socketio(server, {
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"]
   },
-  transports: ['polling', 'websocket'],
+  transports: ['polling'],
   allowEIO3: true,
-  path: '/socket.io'
+  path: '/socket.io',
+  pingTimeout: 10000,
+  pingInterval: 25000,
+  upgradeTimeout: 10000,
+  maxHttpBufferSize: 1e8,
+  cookie: false
 });
 
 // Schemas and Models
@@ -241,6 +246,16 @@ const getClientIp = (req) => {
 // Socket.IO Connection Handling
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
+  
+  // Handle ping manually
+  const pingInterval = setInterval(() => {
+    socket.emit('ping');
+  }, 25000);
+  
+  socket.on('pong', () => {
+    // Client responded to ping
+    console.log(`Pong from ${socket.id}`);
+  });
   
   socket.on("joinBus", (busNumber) => {
     socket.join(busNumber);
@@ -322,6 +337,12 @@ io.on("connection", (socket) => {
   
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
+    clearInterval(pingInterval);
+  });
+  
+  // Handle potential errors
+  socket.on("error", (error) => {
+    console.error("Socket error:", error);
   });
 });
 
@@ -876,6 +897,65 @@ app.get('/api/socket-status', (req, res) => {
     socketActive: true,
     serverTime: new Date().toISOString()
   });
+});
+
+// Add fallback API endpoint for real-time updates (for clients where Socket.io doesn't work)
+app.get('/api/bus-updates', (req, res) => {
+  const lastUpdated = req.query.since ? new Date(req.query.since) : new Date(Date.now() - 60000);
+  
+  try {
+    // Get all buses and find which ones were updated since the "since" parameter
+    if (isDbConnected) {
+      Bus.find({ lastUpdated: { $gte: lastUpdated } })
+        .then(buses => {
+          res.status(200).json({
+            status: 'success',
+            timestamp: new Date().toISOString(),
+            data: {
+              buses: buses.map(bus => ({
+                busNumber: bus.busNumber,
+                latitude: bus.latitude,
+                longitude: bus.longitude,
+                lastUpdated: bus.lastUpdated,
+                currentStatus: bus.currentStatus
+              }))
+            }
+          });
+        })
+        .catch(err => {
+          console.error('Error fetching recent bus updates:', err);
+          res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch recent bus updates'
+          });
+        });
+    } else {
+      // Use mock data if DB is not connected
+      const recentBuses = mockBuses.filter(bus => 
+        bus.lastUpdated && new Date(bus.lastUpdated) >= lastUpdated
+      );
+      
+      res.status(200).json({
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        data: {
+          buses: recentBuses.map(bus => ({
+            busNumber: bus.busNumber,
+            latitude: bus.latitude,
+            longitude: bus.longitude,
+            lastUpdated: bus.lastUpdated,
+            currentStatus: bus.currentStatus
+          }))
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Error in bus updates API:', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to process bus updates request'
+    });
+  }
 });
 
 // Route for serving index HTML
