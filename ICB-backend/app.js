@@ -10,9 +10,9 @@ const cors = require("cors");
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS
+// Configure CORS with wildcard origin for development ease
 app.use(cors({
-  origin: ['https://icb-tracking-website.vercel.app', 'http://localhost:3000'],
+  origin: '*',  // Allow all origins (more permissive)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   credentials: true
@@ -23,7 +23,7 @@ app.options('*', cors());
 
 // Add CORS headers to all responses
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://icb-tracking-website.vercel.app');
+  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -189,12 +189,30 @@ io.on("connection", (socket) => {
       // Store latest update in memory for quick access
       locationUpdates.updateBusLocation(busNumber, data);
       
-      if (!isDbConnected) {
+      // Check if in guest mode
+      const isGuestMode = data.guestMode === true;
+      
+      if (!isDbConnected && !isGuestMode) {
         socket.emit("error", { message: "Database not connected, location update not saved" });
         return;
       }
       
-      // Save to database
+      // Skip database storage for guest mode
+      if (isGuestMode) {
+        // Just broadcast the update without saving
+        io.to(busNumber).emit("busLocation", {
+          busNumber,
+          latitude,
+          longitude,
+          speed,
+          direction,
+          timestamp: new Date(),
+          guestMode: true
+        });
+        return;
+      }
+      
+      // Save to database (only for authenticated updates)
       const tracker = new Tracker({
         deviceId: socket.id,
         busNumber,
@@ -834,6 +852,42 @@ app.use((err, req, res, next) => {
     message: "Something went wrong!",
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
+});
+
+// Add public routes for guest mode access
+app.get("/api/public/buses", async (req, res) => {
+  try {
+    // This endpoint is always accessible, even in guest mode
+    if (!isDbConnected) {
+      // Return sample data for guest mode
+      return res.status(200).json({
+        status: "success",
+        results: 3,
+        data: { 
+          buses: [
+            { busNumber: "01", route: "COLLEGE TO JADCHERLA", currentStatus: "active", contactNumber: "+917981321536" },
+            { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "active", contactNumber: "+917981321537" },
+            { busNumber: "03", route: "COLLEGE TO METTUGADA", currentStatus: "inactive", contactNumber: "+917981321538" }
+          ]
+        }
+      });
+    }
+    
+    // Get data from database
+    const buses = await Bus.find();
+    
+    res.status(200).json({
+      status: "success",
+      results: buses.length,
+      data: { buses }
+    });
+  } catch (err) {
+    console.error("Error fetching public buses:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to fetch buses"
+    });
+  }
 });
 
 // Start Server
