@@ -73,7 +73,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
     try {
         // Use the Vercel deployment URL
-        const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+        const API_BASE_URL = 'https://icb-tracking-website.vercel.app/api/login';
         
         console.log(`Authenticating with: ${API_BASE_URL}/api/login`);
         
