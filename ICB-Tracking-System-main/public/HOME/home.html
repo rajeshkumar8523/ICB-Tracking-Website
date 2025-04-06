@@ -4,14 +4,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>ICB Bus Tracking</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="home.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Socket.io library - load directly from CDN -->
+    
+    <!-- Basic configuration (fallback) -->
+    <script>
+        // Fallback configuration in case config.js fails to load
+        window.APP_CONFIG = window.APP_CONFIG || {
+            API_BASE_URL: 'https://icb-tracking-website.vercel.app',
+            ENDPOINTS: {
+                LOGIN: '/api/login',
+                REGISTER: '/api/register',
+                BUSES: '/api/buses',
+                TRACKERS: '/api/trackers',
+                STATUS: '/api/status'
+            }
+        };
+    </script>
+    
+    <!-- Socket.io library - load directly from CDN before app code -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
     <!-- Load configuration -->
-    <script src="../config.js"></script>
+    <script src="../config.js" onerror="console.error('Failed to load config.js, using fallback configuration')"></script>
 </head>
 
 <body>
