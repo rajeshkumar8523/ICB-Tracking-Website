@@ -1,19 +1,16 @@
-// Use the centralized config for API URL with better fallback
-let API_BASE_URL;
+// Get the API base URL with improved error handling
+let API_BASE_URL = 'https://icb-tracking-website.vercel.app'; // Default fallback
+
 try {
-  // Check if config exists and is properly loaded
-  if (typeof window.APP_CONFIG === 'object' && window.APP_CONFIG.API_BASE_URL) {
-    API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
-    console.log('Using API URL from config:', API_BASE_URL);
-  } else {
-    // Fallback if config not available
-    API_BASE_URL = 'https://icb-tracking-website.vercel.app';
-    console.log('Using fallback API URL:', API_BASE_URL);
-  }
+    // Check if APP_CONFIG exists and has API_BASE_URL
+    if (window.APP_CONFIG && typeof window.APP_CONFIG.API_BASE_URL === 'string') {
+        API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
+        console.log('Using API URL from config:', API_BASE_URL);
+    } else {
+        console.warn('APP_CONFIG not found or invalid, using default API URL:', API_BASE_URL);
+    }
 } catch (e) {
-  // Emergency fallback
-  API_BASE_URL = 'https://icb-tracking-website.vercel.app';
-  console.error('Error loading config:', e);
+    console.error('Error accessing APP_CONFIG:', e);
 }
 
 let socket;
@@ -32,6 +29,7 @@ function initializeSocket() {
     // Check if socket.io is available
     if (typeof io === 'undefined') {
         console.error('Socket.io library not available');
+        showUpdateNotification('Live updates not available');
         return;
     }
     
@@ -41,7 +39,7 @@ function initializeSocket() {
             socket.disconnect();
         }
         
-        // Direct socket connection without relying on config.js
+        // Create new socket connection
         console.log('Connecting to socket at:', API_BASE_URL);
         socket = io(API_BASE_URL, {
             path: '/socket.io',
@@ -146,95 +144,90 @@ async function fetchAndRenderBuses() {
         console.log("Guest mode:", isGuestMode);
         
         let buses = [];
+        let apiEndpoint = `${API_BASE_URL}/api/buses`;
         
         if (isGuestMode) {
-            // Use mock data for guest mode
-            buses = [
-                { busNumber: "01", route: "COLLEGE TO JADCHERLA", currentStatus: "active", contactNumber: "+917981321536" },
-                { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "active", contactNumber: "+917981321537" },
-                { busNumber: "03", route: "COLLEGE TO METTUGADA", currentStatus: "inactive", contactNumber: "+917981321538" }
-            ];
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-        } else {
-            // Fetch real data from API with timeout
-            try {
-                console.log("Fetching buses from:", `${API_BASE_URL}/api/buses`);
-                
-                // Create AbortController for timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-                
-                const response = await fetch(`${API_BASE_URL}/api/buses`, {
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId); // Clear timeout
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                buses = result.data?.buses || [];
-                
-                // If socket is not connected, check for recent updates
-                if (!socketConnected && !isGuestMode) {
-                    console.log("Socket not connected, checking for bus updates via API");
-                    try {
-                        // Get the last update time or default to 5 minutes ago
-                        const lastUpdateTime = localStorage.getItem('lastUpdateTime') || 
-                            new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            // Use the public API endpoint for guest mode
+            apiEndpoint = `${API_BASE_URL}/api/public/buses`;
+        }
+        
+        // Fetch bus data from API with timeout
+        try {
+            console.log("Fetching buses from:", apiEndpoint);
+            
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch(apiEndpoint, {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId); // Clear timeout
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            buses = result.data?.buses || [];
+            
+            // If socket is not connected and not in guest mode, check for recent updates
+            if (!socketConnected && !isGuestMode) {
+                console.log("Socket not connected, checking for bus updates via API");
+                try {
+                    // Get the last update time or default to 5 minutes ago
+                    const lastUpdateTime = localStorage.getItem('lastUpdateTime') || 
+                        new Date(Date.now() - 5 * 60 * 1000).toISOString();
+                    
+                    const updatesResponse = await fetch(
+                        `${API_BASE_URL}/api/bus-updates?since=${encodeURIComponent(lastUpdateTime)}`, 
+                        { signal: controller.signal }
+                    );
+                    
+                    if (updatesResponse.ok) {
+                        const updatesData = await updatesResponse.json();
+                        console.log("Received updates via API:", updatesData);
                         
-                        const updatesResponse = await fetch(
-                            `${API_BASE_URL}/api/bus-updates?since=${encodeURIComponent(lastUpdateTime)}`, 
-                            { signal: controller.signal }
-                        );
+                        // Store the current time as last update time
+                        localStorage.setItem('lastUpdateTime', new Date().toISOString());
                         
-                        if (updatesResponse.ok) {
-                            const updatesData = await updatesResponse.json();
-                            console.log("Received updates via API:", updatesData);
+                        // If we got updates, update the buses data
+                        if (updatesData.data && updatesData.data.updates && updatesData.data.updates.length > 0) {
+                            // Update bus locations if needed
+                            buses = buses.map(bus => {
+                                // Find the latest update for this bus
+                                const latestUpdate = updatesData.data.updates.find(u => u.busNumber === bus.busNumber);
+                                if (latestUpdate) {
+                                    // Update bus with latest location
+                                    return {
+                                        ...bus,
+                                        latitude: latestUpdate.latitude,
+                                        longitude: latestUpdate.longitude,
+                                        lastUpdated: latestUpdate.timestamp
+                                    };
+                                }
+                                return bus;
+                            });
                             
-                            // Store the current time as last update time
-                            localStorage.setItem('lastUpdateTime', new Date().toISOString());
-                            
-                            // If we got updates, update the buses data
-                            if (updatesData.data && updatesData.data.updates && updatesData.data.updates.length > 0) {
-                                // Update bus locations if needed
-                                buses = buses.map(bus => {
-                                    // Find the latest update for this bus
-                                    const latestUpdate = updatesData.data.updates.find(u => u.busNumber === bus.busNumber);
-                                    if (latestUpdate) {
-                                        // Update bus with latest location
-                                        return {
-                                            ...bus,
-                                            latitude: latestUpdate.latitude,
-                                            longitude: latestUpdate.longitude,
-                                            lastUpdated: latestUpdate.timestamp
-                                        };
-                                    }
-                                    return bus;
-                                });
-                                
-                                showUpdateNotification(`Updates received at: ${new Date().toLocaleTimeString()}`);
-                            }
+                            showUpdateNotification(`Updates received at: ${new Date().toLocaleTimeString()}`);
                         }
-                    } catch (updateError) {
-                        console.warn("Failed to get updates via API:", updateError);
                     }
+                } catch (updateError) {
+                    console.warn("Failed to get updates via API:", updateError);
                 }
-            } catch (apiError) {
-                console.error('API error:', apiError);
-                if (apiError.name === 'AbortError') {
-                    // Handle timeout specifically
-                    console.log('Request timed out, using fallback data');
-                    buses = [
-                        { busNumber: "01", route: "COLLEGE TO JADCHERLA", currentStatus: "unknown", contactNumber: "+917981321536" },
-                        { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "unknown", contactNumber: "+917981321537" }
-                    ];
-                } else {
-                    throw apiError;
-                }
+            }
+        } catch (apiError) {
+            console.error('API error:', apiError);
+            if (apiError.name === 'AbortError') {
+                // Handle timeout specifically
+                console.log('Request timed out, using fallback data');
+                buses = [
+                    { busNumber: "01", route: "COLLEGE TO JADCHERLA", currentStatus: "unknown", contactNumber: "+917981321536" },
+                    { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "unknown", contactNumber: "+917981321537" }
+                ];
+            } else {
+                throw apiError;
             }
         }
 
@@ -290,17 +283,19 @@ async function fetchAndRenderBuses() {
     } catch (error) {
         console.error('Error fetching buses:', error);
         const container = document.getElementById('busContainer');
-        container.innerHTML = `
-            <div class="error">Failed to load bus data. Please try again later.</div>
-            <button onclick="fetchAndRenderBuses()" class="retry-button">Retry</button>
-        `;
+        if (container) {
+            container.innerHTML = `
+                <div class="error">Failed to load bus data. Please try again later.</div>
+                <button onclick="fetchAndRenderBuses()" class="retry-button">Retry</button>
+            `;
+        }
         showUpdateNotification('Error updating');
     }
 }
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if user is logged in
+    // Check if user is logged in or in guest mode
     const userId = localStorage.getItem('userId');
     const isGuestMode = localStorage.getItem('guestMode') === 'true';
     
@@ -310,8 +305,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
-    // Initialize the socket connection
-    initializeSocket();
+    // Add a guest mode indicator if in guest mode
+    if (isGuestMode) {
+        const header = document.querySelector('header');
+        if (header) {
+            const guestIndicator = document.createElement('div');
+            guestIndicator.className = 'guest-indicator';
+            guestIndicator.innerHTML = '<i class="fas fa-user-secret"></i> Guest Mode';
+            header.appendChild(guestIndicator);
+        }
+    } else {
+        // Only initialize the socket connection if not in guest mode
+        initializeSocket();
+    }
     
     // Fetch buses immediately
     fetchAndRenderBuses();
@@ -319,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up refresh intervals
     // More frequent polling if socket is not connected
     setInterval(() => {
-        if (!socketConnected && !localStorage.getItem('guestMode') === 'true') {
+        if (!socketConnected && !isGuestMode) {
             console.log("Socket not connected, using HTTP polling instead");
             fetchAndRenderBuses();
         }
