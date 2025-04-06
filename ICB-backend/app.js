@@ -96,16 +96,24 @@ mongoose.connection.on('error', err => {
   isDbConnected = false;
 });
 
-// Configure Socket.IO with proper CORS settings
+// Configure Socket.IO with enhanced CORS settings
 const io = socketio(server, {
   cors: {
-    origin: ["https://icb-tracking-website.vercel.app", "http://localhost:3000"],
+    origin: "*",  // Allow connections from all origins
     methods: ["GET", "POST", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Accept", "Authorization"]
   },
   transports: ['websocket', 'polling'],
-  allowEIO3: true
+  allowEIO3: true,
+  pingTimeout: 30000,
+  pingInterval: 25000,
+  connectTimeout: 30000
+});
+
+// Add diagnostic event listeners to help debug socket issues
+io.engine.on("connection_error", (err) => {
+  console.log("Connection error:", err.req, err.code, err.message, err.context);
 });
 
 // Add special handler for location tracking
@@ -982,6 +990,69 @@ app.use((err, req, res, next) => {
     message: "Something went wrong!",
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
+});
+
+// API Routes for Socket.io health check
+app.get("/api/socket-status", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    socketActive: true,
+    connections: Object.keys(io.sockets.sockets).length,
+    serverTime: new Date().toISOString()
+  });
+});
+
+// Add a fallback API endpoint for bus updates when socket doesn't work
+app.get("/api/bus-updates", async (req, res) => {
+  try {
+    const { since } = req.query;
+    let sinceDate = since ? new Date(since) : new Date(Date.now() - 3600000); // Default to last hour
+    
+    if (isDbConnected) {
+      // Get recent bus updates from database
+      const recentUpdates = await Tracker.find({
+        timestamp: { $gte: sinceDate }
+      })
+      .sort({ timestamp: -1 })
+      .limit(50);
+      
+      // Get current bus data
+      const buses = await Bus.find();
+      
+      // Prepare response
+      res.status(200).json({
+        status: "success",
+        source: "database",
+        serverTime: new Date().toISOString(),
+        data: {
+          updates: recentUpdates,
+          buses: buses
+        }
+      });
+    } else {
+      // Use mock data
+      const recentUpdates = mockTrackers
+        .filter(t => new Date(t.timestamp) >= sinceDate)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 50);
+      
+      res.status(200).json({
+        status: "success",
+        source: "mock",
+        serverTime: new Date().toISOString(),
+        data: {
+          updates: recentUpdates,
+          buses: mockBuses
+        }
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching bus updates:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to fetch bus updates",
+    });
+  }
 });
 
 // Start Server
