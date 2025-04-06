@@ -72,16 +72,16 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     }
 
     try {
-        // Use the centralized config for API URL if available, otherwise use the Vercel URL
-        const API_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+        // Use the Vercel deployment URL
+        const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
         
-        console.log(`Sending login request to: ${API_URL}/api/login`);
+        console.log(`Authenticating with: ${API_BASE_URL}/api/login`);
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         
         try {
-            const response = await fetch(`${API_URL}/api/login`, {
+            const response = await fetch(`${API_BASE_URL}/api/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -112,11 +112,20 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 throw new Error(data.message || `Server error (${response.status})`);
             }
             
+            // Store user data from response
+            if (data && data.data && data.data.user) {
+                // Save user info to localStorage for persistence
+                localStorage.setItem('userData', JSON.stringify(data.data.user));
+                localStorage.setItem('userId', data.data.user.userId);
+                localStorage.setItem('userRole', data.data.user.role || 'user');
+                localStorage.setItem('userName', data.data.user.name);
+            } else {
+                localStorage.setItem('userId', userId);
+            }
+            
             successMessage.textContent = "Login successful! Redirecting...";
             successMessage.style.display = "block";
             errorMessage.textContent = "";
-            
-            localStorage.setItem('userId', userId);
             
             setTimeout(() => {
                 window.location.href = "../HOME/home.html";
@@ -170,14 +179,14 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     }
 
     try {
-        // Use the centralized config for API URL if available, otherwise use the Vercel URL
-        const API_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+        // Use the Vercel deployment URL
+        const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         
         try {
-            const response = await fetch(`${API_URL}/api/reset-password`, {
+            const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
