@@ -163,18 +163,8 @@ let mockTrackers = [
   }
 ];
 
-// Add initial mock users for testing
-let mockUsers = [
-  {
-    userId: "test1",
-    name: "Test User",
-    contact: "1234567890",
-    email: "test@example.com",
-    password: "password123",
-    role: "user",
-    lastLogin: new Date()
-  }
-];
+// Add initial mock users for testing - will be populated if DB connection fails
+let mockUsers = [];
 
 let isDbConnected = false;
 
@@ -428,6 +418,7 @@ app.post("/api/login", async (req, res, next) => {
     const { userId, password } = req.body;
     
     if (!userId || !password) {
+      console.log("Missing credentials - userId or password not provided");
       return res.status(400).json({
         status: "fail",
         message: "Please provide user ID and password!",
@@ -436,10 +427,23 @@ app.post("/api/login", async (req, res, next) => {
     
     if (!isDbConnected) {
       // Check mock data if DB is not connected
+      console.log("Database not connected, checking mock users for:", userId);
+      console.log("Available mock users:", mockUsers.map(u => u.userId).join(", "));
+      
       const user = mockUsers.find(u => u.userId === userId);
       console.log("Found user in mock data:", user ? user.userId : "none");
       
-      if (!user || password !== user.password) {
+      if (!user) {
+        console.log(`User not found: ${userId}`);
+        return res.status(401).json({
+          status: "fail",
+          message: "Incorrect user ID or password",
+        });
+      }
+      
+      console.log(`Comparing passwords for ${userId}: provided=${password}, stored=${user.password}`);
+      if (password !== user.password) {
+        console.log(`Password mismatch for user: ${userId}`);
         return res.status(401).json({
           status: "fail",
           message: "Incorrect user ID or password",
@@ -449,6 +453,7 @@ app.post("/api/login", async (req, res, next) => {
       user.ipAddress = getClientIp(req);
       user.lastLogin = new Date();
       
+      console.log(`Login successful for user: ${userId} (mock data)`);
       return res.status(200).json({
         status: "success",
         data: {
@@ -464,20 +469,33 @@ app.post("/api/login", async (req, res, next) => {
       });
     }
     
+    console.log("Database connected, checking DB for user:", userId);
     const user = await User.findOne({ userId });
     console.log("Found user in database:", user ? user.userId : "none");
     
-    const ipAddress = getClientIp(req);
-    if (!user || password !== user.password) {
+    if (!user) {
+      console.log(`User not found in database: ${userId}`);
       return res.status(401).json({
         status: "fail",
         message: "Incorrect user ID or password",
       });
     }
+    
+    console.log(`Comparing passwords for ${userId}: provided=${password}, stored=${user.password}`);
+    if (password !== user.password) {
+      console.log(`Password mismatch for user: ${userId}`);
+      return res.status(401).json({
+        status: "fail",
+        message: "Incorrect user ID or password",
+      });
+    }
+    
+    const ipAddress = getClientIp(req);
     user.ipAddress = ipAddress;
     user.lastLogin = new Date();
     await user.save();
     
+    console.log(`Login successful for user: ${userId} (database)`);
     res.status(200).json({
       status: "success",
       data: {
