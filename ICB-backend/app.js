@@ -913,12 +913,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start Server
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Socket.IO server path: ${io.path()}`);
-});
+// Check if this is being run directly (not imported)
+if (require.main === module) {
+  // Start Server directly when app.js is executed
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Socket.IO server path: ${io.path()}`);
+  });
+} else {
+  // Export for use in vercel-dev.js or serverless function
+  module.exports = server;
+}
 
 // Error handling
 process.on("unhandledRejection", (err) => {
