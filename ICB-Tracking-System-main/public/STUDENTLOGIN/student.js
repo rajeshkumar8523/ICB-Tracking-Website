@@ -59,77 +59,102 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         const apiUrl = `${API_BASE_URL}${LOGIN_ENDPOINT}`;
         console.log(`Authenticating with: ${apiUrl}`);
         
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout
+        // Use retry mechanism for auth
+        const maxRetries = 2;
+        let retryCount = 0;
+        let success = false;
+        let finalResponse = null;
+        let finalData = null;
         
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    userId: userId,
-                    password: password
-                }),
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            console.log("Login response status:", response.status);
-            
-            // Parse response
-            let data;
+        while (retryCount <= maxRetries && !success) {
             try {
-                data = await response.json();
-                console.log("Login response data:", data);
-            } catch (jsonError) {
-                console.error("Error parsing response:", jsonError);
-                throw new Error("Unable to parse server response. Please try again.");
-            }
-            
-            // Handle unauthorized (wrong credentials)
-            if (response.status === 401) {
-                errorMessage.textContent = "Invalid username or password. Please try again.";
-                return;
-            }
-            
-            // Handle other errors
-            if (!response.ok) {
-                throw new Error(data.message || `Server error (${response.status})`);
-            }
-            
-            // Login successful
-            errorMessage.textContent = "";
-            
-            // Store user data from response
-            if (data && data.data && data.data.user) {
-                // Save user info to localStorage for persistence
-                localStorage.setItem('userData', JSON.stringify(data.data.user));
-                localStorage.setItem('userId', data.data.user.userId);
-                localStorage.setItem('userRole', data.data.user.role || 'user');
-                localStorage.setItem('userName', data.data.user.name);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
                 
-                console.log("User authenticated successfully:", data.data.user.userId);
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        password: password
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                finalResponse = response;
+                console.log("Login response status:", response.status);
+                
+                // Parse response
+                let data;
+                try {
+                    data = await response.json();
+                    finalData = data;
+                    console.log("Login response data:", data);
+                } catch (jsonError) {
+                    console.error("Error parsing response:", jsonError);
+                    throw new Error("Unable to parse server response. Please try again.");
+                }
+                
+                // Check if registered but failed login - no need to retry
+                if (response.status === 401) {
+                    errorMessage.textContent = "Invalid username or password. Please try again.";
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.message || `Server error (${response.status})`);
+                }
+                
+                success = true;
+                
+                // Update auth status
+                if (data && data.data && data.data.user) {
+                    // Save user info to localStorage for persistence
+                    localStorage.setItem('userData', JSON.stringify(data.data.user));
+                    localStorage.setItem('userId', data.data.user.userId);
+                    localStorage.setItem('userRole', data.data.user.role || 'user');
+                    localStorage.setItem('userName', data.data.user.name);
+                    
+                    console.log("User authenticated successfully:", data.data.user.userId);
+                } else {
+                    localStorage.setItem('userId', userId);
+                }
+                
+                // Show success and redirect
+                errorMessage.textContent = "";
+                successMessage.textContent = "Login successful! Redirecting...";
+                successMessage.style.display = "block";
+                
+                setTimeout(() => {
+                    window.location.href = "../HOME/home.html";
+                }, 1000);
+            } catch (fetchError) {
+                retryCount++;
+                
+                if (fetchError.name === 'AbortError') {
+                    console.log("Request timed out, retrying...");
+                    // Continue retry loop on timeout
+                } else if (retryCount > maxRetries) {
+                    throw fetchError;
+                }
+                
+                console.log(`Retrying authentication (${retryCount}/${maxRetries})...`);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+            }
+        }
+        
+        if (!success) {
+            if (finalResponse && finalResponse.status === 401) {
+                errorMessage.textContent = "Invalid username or password. Please try again.";
+            } else if (finalData && finalData.message) {
+                throw new Error(finalData.message);
             } else {
-                localStorage.setItem('userId', userId);
+                throw new Error("Authentication failed after multiple attempts");
             }
-            
-            successMessage.textContent = "Login successful! Redirecting...";
-            successMessage.style.display = "block";
-            
-            setTimeout(() => {
-                window.location.href = "../HOME/home.html";
-            }, 1000);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            
-            if (fetchError.name === 'AbortError') {
-                throw new Error("Authentication request timed out. Please try again.");
-            }
-            
-            throw fetchError;
         }
     } catch (error) {
         console.error("Login error:", error);
