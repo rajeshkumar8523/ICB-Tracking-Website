@@ -20,6 +20,9 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     const name = document.getElementById("name").value;
     const contact = document.getElementById("contact").value;
     const email = document.getElementById("email").value;
+    const dob = document.getElementById("dob").value;
+    const gender = document.getElementById("gender").value;
+    const branchYear = document.getElementById("branchYear").value;
     const newPassword = document.getElementById("newPassword").value;
     const confirmPassword = document.getElementById("confirmPassword").value;
     const errorMessage = document.getElementById("error-message");
@@ -37,7 +40,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
 
     try {
         // Sending data to the server
-        const response = await fetch('https://icb-tracking-website.vercel.app/api/register', {
+        const response = await fetch('http://192.168.0.245:5000/api/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -47,6 +50,9 @@ document.getElementById('registerForm').addEventListener('submit', async functio
                 name,
                 contact,
                 email,
+                dob,
+                gender,
+                branchYear,
                 password: newPassword
             })
         });
