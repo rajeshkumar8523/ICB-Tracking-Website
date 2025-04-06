@@ -47,7 +47,8 @@ document.getElementById('registerForm').addEventListener('submit', async functio
 
     // Display loading state
     errorMessage.textContent = "Processing registration...";
-    document.getElementById("submitBtn").enebaled = true;
+    const submitButton = document.getElementById("submitBtn");
+    if (submitButton) submitButton.disabled = true;
 
     try {
         // Prepare the user data
@@ -135,6 +136,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         errorMessage.textContent = error.message || "Registration failed. Please try again.";
         successMessage.style.display = "none";
     } finally {
-        document.getElementById("submitBtn").disabled = false;
+        const submitButton = document.getElementById("submitBtn");
+        if (submitButton) submitButton.disabled = false;
     }
 });
