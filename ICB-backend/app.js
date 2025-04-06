@@ -10,8 +10,13 @@ const cors = require("cors");
 const app = express();
 const server = http.createServer(app);
 
-// Add CORS middleware
-app.use(cors());
+// Configure CORS with more specific options for Vercel deployment
+app.use(cors({
+  origin: ['https://icb-tracking-website.vercel.app', 'http://localhost:3000', 'http://localhost:5000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+  credentials: true
+}));
 
 // Basic middleware
 app.use(express.json());
@@ -158,7 +163,19 @@ let mockTrackers = [
   }
 ];
 
-let mockUsers = [];
+// Add initial mock users for testing
+let mockUsers = [
+  {
+    userId: "test1",
+    name: "Test User",
+    contact: "1234567890",
+    email: "test@example.com",
+    password: "password123",
+    role: "user",
+    lastLogin: new Date()
+  }
+];
+
 let isDbConnected = false;
 
 mongoose
@@ -172,11 +189,12 @@ mongoose
     console.log("Running with mock data instead of database");
   });
 
-// Configure Socket.IO
+// Configure Socket.IO with appropriate CORS settings
 const io = socketio(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
+    credentials: false
   },
 });
 
@@ -316,10 +334,19 @@ io.on("connection", (socket) => {
   });
 });
 
-// API Routes (simplified without authentication)
+// API Routes - ensure they return appropriate status codes and clear messages
 app.post("/api/register", async (req, res, next) => {
   try {
+    console.log("Register request received:", req.body);
     const { userId, name, contact, email, password, role } = req.body;
+    
+    // Validate input
+    if (!userId || !name || !contact || !email || !password) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Please provide all required fields: userId, name, contact, email, password",
+      });
+    }
     
     if (!isDbConnected) {
       // Store in mock data if DB is not connected
@@ -343,6 +370,7 @@ app.post("/api/register", async (req, res, next) => {
       };
       
       mockUsers.push(newUser);
+      console.log("New user created in mock data:", newUser.userId);
       
       return res.status(201).json({
         status: "success",
@@ -375,6 +403,8 @@ app.post("/api/register", async (req, res, next) => {
       lastLogin: new Date(),
       role: role || "user",
     });
+    console.log("New user created in database:", newUser.userId);
+    
     res.status(201).json({
       status: "success",
       data: {
@@ -387,13 +417,16 @@ app.post("/api/register", async (req, res, next) => {
       },
     });
   } catch (err) {
+    console.error("Register error:", err);
     next(err);
   }
 });
 
 app.post("/api/login", async (req, res, next) => {
   try {
+    console.log("Login request received:", req.body);
     const { userId, password } = req.body;
+    
     if (!userId || !password) {
       return res.status(400).json({
         status: "fail",
@@ -404,6 +437,8 @@ app.post("/api/login", async (req, res, next) => {
     if (!isDbConnected) {
       // Check mock data if DB is not connected
       const user = mockUsers.find(u => u.userId === userId);
+      console.log("Found user in mock data:", user ? user.userId : "none");
+      
       if (!user || password !== user.password) {
         return res.status(401).json({
           status: "fail",
@@ -430,6 +465,8 @@ app.post("/api/login", async (req, res, next) => {
     }
     
     const user = await User.findOne({ userId });
+    console.log("Found user in database:", user ? user.userId : "none");
+    
     const ipAddress = getClientIp(req);
     if (!user || password !== user.password) {
       return res.status(401).json({
@@ -440,6 +477,7 @@ app.post("/api/login", async (req, res, next) => {
     user.ipAddress = ipAddress;
     user.lastLogin = new Date();
     await user.save();
+    
     res.status(200).json({
       status: "success",
       data: {
@@ -454,6 +492,7 @@ app.post("/api/login", async (req, res, next) => {
       },
     });
   } catch (err) {
+    console.error("Login error:", err);
     next(err);
   }
 });
@@ -860,6 +899,16 @@ app.get("/api/trackers/history/:busNumber", async (req, res, next) => {
   }
 });
 
+// Add a heartbeat endpoint to verify API is working
+app.get("/api/status", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "API is operational",
+    dbConnected: isDbConnected,
+    serverTime: new Date().toISOString()
+  });
+});
+
 // Route for serving index HTML
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, '../ICB-Tracking-System-main/public/INDEX/index.html'));
@@ -892,6 +941,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     status: "error",
     message: "Something went wrong!",
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
@@ -899,6 +949,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`API available at http://localhost:${PORT}/api/status`);
 });
 
 // Error handling
