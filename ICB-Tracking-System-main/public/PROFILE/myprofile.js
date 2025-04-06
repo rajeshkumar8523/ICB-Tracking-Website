@@ -1,5 +1,5 @@
 // Use the centralized config for API URL
-const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/profile` : 'http://localhost:5000/api/profile';
+const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/profile` : 'https://icb-tracking-website.vercel.app/api/profile';
 
 document.getElementById('imageUpload').addEventListener('change', uploadImage);
 
