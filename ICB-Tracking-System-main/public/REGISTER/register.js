@@ -28,6 +28,12 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     errorMessage.textContent = "";
     successMessage.textContent = "";
     successMessage.style.display = "none";
+    
+    // Field validation
+    if (!userId || !name || !contact || !email || !newPassword) {
+        errorMessage.textContent = "All fields are required!";
+        return;
+    }
 
     // Password match validation
     if (newPassword !== confirmPassword) {
@@ -35,28 +41,61 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         return;
     }
 
+    // Display loading state
+    errorMessage.textContent = "Processing registration...";
+
     try {
+        // Prepare the user data
+        const userData = {
+            userId: userId,
+            name: name,
+            contact: contact,
+            email: email,
+            password: newPassword
+        };
+        
+        console.log("Sending registration data:", JSON.stringify(userData));
+        
         // Sending data to the server
         const response = await fetch('https://icb-tracking-website.vercel.app/api/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify({
-                userId,
-                name,
-                contact,
-                email,
-                password: newPassword
-            })
+            body: JSON.stringify(userData)
         });
 
-        const data = await response.json();
+        // Log response status
+        console.log("Registration response status:", response.status);
+        
+        // Parse the response data
+        let data;
+        try {
+            data = await response.json();
+            console.log("Registration response data:", data);
+        } catch (jsonError) {
+            console.error("Error parsing response:", jsonError);
+            throw new Error("Server returned invalid data. Please try again.");
+        }
 
         if (!response.ok) {
             throw new Error(data.message || 'Registration failed');
         }
 
+        // Clear the form
+        document.getElementById('registerForm').reset();
+        
+        // Also save to localStorage as a backup
+        localStorage.setItem('lastRegisteredUser', JSON.stringify({
+            userId: userId,
+            name: name,
+            email: email,
+            registeredAt: new Date().toISOString()
+        }));
+
+        // Show success message
+        errorMessage.textContent = "";
         successMessage.textContent = "Registration successful! Redirecting to login...";
         successMessage.style.display = "block";
 
@@ -65,6 +104,8 @@ document.getElementById('registerForm').addEventListener('submit', async functio
             window.location.href = "../STUDENTLOGIN/studentlogin.html";
         }, 2000);
     } catch (error) {
-        errorMessage.textContent = error.message;
+        console.error("Registration error:", error);
+        errorMessage.textContent = error.message || "Registration failed. Please try again.";
+        successMessage.style.display = "none";
     }
 });
