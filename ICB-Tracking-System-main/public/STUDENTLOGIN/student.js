@@ -40,7 +40,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
     try {
         // Use the centralized config for API URL
-     window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
         
         const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
@@ -93,7 +93,10 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     }
 
     try {
-        const response = await fetch('https://icb-tracking-website.vercel.app/api/reset-password', {
+        // Use the centralized config for API URL
+        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+        
+        const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
