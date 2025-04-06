@@ -1,6 +1,23 @@
-// Manually set the server URL
-const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
-const socket = io(API_BASE_URL);
+// Use the centralized config for API URL
+const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+let socket;
+
+// Initialize socket if not in guest mode
+try {
+    socket = io(API_BASE_URL);
+    
+    // Listen for real-time bus location updates
+    socket.on('busLocation', (data) => {
+        showUpdateNotification(`just now`);
+        console.log('Received location update for bus:', data.busNumber);
+    });
+    
+    socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+    });
+} catch (e) {
+    console.error('Failed to initialize socket:', e);
+}
 
 // Function to show update notification
 function showUpdateNotification(message) {
@@ -26,14 +43,39 @@ function highlight(element) {
 // Function to fetch and display all buses
 async function fetchAndRenderBuses() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/buses`);
-        const result = await response.json();
-
-        // Extract the buses array from the response
-        const buses = result.data?.buses || [];
-
         const container = document.getElementById('busContainer');
-        container.innerHTML = ''; // Clear existing content
+        container.innerHTML = '<div class="loading">Loading buses...</div>'; // Show loading
+        
+        // Check if we're in guest mode
+        const isGuestMode = localStorage.getItem('guestMode') === 'true';
+        console.log("Guest mode:", isGuestMode);
+        
+        let buses = [];
+        
+        if (isGuestMode) {
+            // Use mock data for guest mode
+            buses = [
+                { busNumber: "01", route: "COLLEGE TO JADCHERLA", currentStatus: "active", contactNumber: "+917981321536" },
+                { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "active", contactNumber: "+917981321537" },
+                { busNumber: "03", route: "COLLEGE TO METTUGADA", currentStatus: "inactive", contactNumber: "+917981321538" }
+            ];
+        } else {
+            // Fetch real data from API
+            try {
+                console.log("Fetching buses from:", `${API_BASE_URL}/api/buses`);
+                const response = await fetch(`${API_BASE_URL}/api/buses`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                buses = result.data?.buses || [];
+            } catch (apiError) {
+                console.error('API error:', apiError);
+                throw apiError;
+            }
+        }
+
+        container.innerHTML = ''; // Clear loading message
 
         if (buses.length) {
             buses.forEach(bus => {
@@ -83,18 +125,24 @@ async function fetchAndRenderBuses() {
         }
     } catch (error) {
         console.error('Error fetching buses:', error);
+        const container = document.getElementById('busContainer');
         container.innerHTML = '<div class="error">Failed to load bus data. Please try again later.</div>';
         showUpdateNotification('Error updating');
     }
 }
 
-// Listen for real-time bus location updates
-socket.on('busLocation', (data) => {
-    showUpdateNotification(`just now`);
-});
-
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if user is logged in
+    const userId = localStorage.getItem('userId');
+    const isGuestMode = localStorage.getItem('guestMode') === 'true';
+    
+    if (!userId && !isGuestMode) {
+        // Redirect to login if not logged in and not in guest mode
+        window.location.href = '../STUDENTLOGIN/studentlogin.html';
+        return;
+    }
+    
     fetchAndRenderBuses();
     
     // Refresh bus list every 30 seconds
