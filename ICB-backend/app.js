@@ -12,11 +12,23 @@ const server = http.createServer(app);
 
 // Configure CORS
 app.use(cors({
-  origin: ['https://icb-tracking-website.vercel.app', 'http://localhost:3000', 'http://localhost:5000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: ['https://icb-tracking-website.vercel.app', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   credentials: true
 }));
+
+// Add CORS preflight for all routes
+app.options('*', cors());
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://icb-tracking-website.vercel.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
 
 // Basic middleware
 app.use(express.json());
@@ -84,13 +96,16 @@ mongoose.connection.on('error', err => {
   isDbConnected = false;
 });
 
-// Configure Socket.IO
+// Configure Socket.IO with proper CORS settings
 const io = socketio(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    credentials: false
+    origin: ["https://icb-tracking-website.vercel.app", "http://localhost:3000"],
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Accept", "Authorization"]
   },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
 });
 
 // Add special handler for location tracking
