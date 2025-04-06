@@ -175,13 +175,16 @@ mongoose
     useUnifiedTopology: true,
     serverSelectionTimeoutMS: 10000, // Timeout after 10 seconds
     maxPoolSize: 10, // Maintain up to 10 socket connections
+    connectTimeoutMS: 30000, // Give up initial connection after 30 seconds
+    socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
   })
   .then(() => {
-    console.log("MongoDB Connected Successfully");
+    console.log("MongoDB Connected Successfully to:", MONGO_URI);
     isDbConnected = true;
   })
   .catch((err) => {
     console.error("MongoDB Connection Error:", err);
+    console.error("Failed to connect to:", MONGO_URI);
     console.log("Running with mock data instead of database");
     
     // Add a default user to mock data for testing when DB is down
@@ -378,6 +381,7 @@ app.post("/api/register", async (req, res, next) => {
       
       mockUsers.push(newUser);
       console.log("New user created in mock data:", newUser.userId);
+      console.log("Warning: Database is not connected. User data is stored temporarily in memory only.");
       
       return res.status(201).json({
         status: "success",
@@ -400,29 +404,38 @@ app.post("/api/register", async (req, res, next) => {
       });
     }
     const ipAddress = getClientIp(req);
-    const newUser = await User.create({
-      userId,
-      name,
-      contact,
-      email,
-      password,
-      ipAddress,
-      lastLogin: new Date(),
-      role: role || "user",
-    });
-    console.log("New user created in database:", newUser.userId);
     
-    res.status(201).json({
-      status: "success",
-      data: {
-        user: {
-          userId: newUser.userId,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
+    try {
+      const newUser = await User.create({
+        userId,
+        name,
+        contact,
+        email,
+        password,
+        ipAddress,
+        lastLogin: new Date(),
+        role: role || "user",
+      });
+      console.log("New user created in database:", newUser.userId);
+      
+      res.status(201).json({
+        status: "success",
+        data: {
+          user: {
+            userId: newUser.userId,
+            name: newUser.name,
+            email: newUser.email,
+            role: newUser.role,
+          },
         },
-      },
-    });
+      });
+    } catch (dbError) {
+      console.error("Database error during user creation:", dbError);
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to create user in database. Please try again later.",
+      });
+    }
   } catch (err) {
     console.error("Register error:", err);
     next(err);
