@@ -172,7 +172,7 @@ mongoose
     console.log("Running with mock data instead of database");
   });
 
-// Configure Socket.IO with open CORS
+// Configure Socket.IO
 const io = socketio(server, {
   cors: {
     origin: "*",
