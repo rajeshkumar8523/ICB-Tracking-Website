@@ -54,55 +54,74 @@ document.getElementById('registerForm').addEventListener('submit', async functio
             password: newPassword
         };
         
-        console.log("Sending registration data:", JSON.stringify(userData));
+        console.log("Sending registration data");
         
-        // Sending data to the server
-        const response = await fetch('https://icb-tracking-website.vercel.app/api/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(userData)
-        });
-
-        // Log response status
-        console.log("Registration response status:", response.status);
+        // Use an appropriate retry mechanism
+        const maxRetries = 2;
+        let retryCount = 0;
+        let success = false;
         
-        // Parse the response data
-        let data;
-        try {
-            data = await response.json();
-            console.log("Registration response data:", data);
-        } catch (jsonError) {
-            console.error("Error parsing response:", jsonError);
-            throw new Error("Server returned invalid data. Please try again.");
+        while (retryCount <= maxRetries && !success) {
+            try {
+                // Sending data to the server
+                const response = await fetch('https://icb-tracking-website.vercel.app/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(userData),
+                    timeout: 10000 // 10 second timeout
+                });
+                
+                // Log response status
+                console.log("Registration response status:", response.status);
+                
+                // Parse the response data
+                let data;
+                try {
+                    data = await response.json();
+                    console.log("Registration response received");
+                } catch (jsonError) {
+                    console.error("Error parsing response:", jsonError);
+                    throw new Error("Server returned invalid data. Please try again.");
+                }
+                
+                if (response.status === 400 && data.message.includes("already exists")) {
+                    throw new Error("User ID or Email already exists. Please use different credentials.");
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Registration failed');
+                }
+                
+                success = true;
+                
+                // Clear the form
+                document.getElementById('registerForm').reset();
+                
+                // Save user info and show success
+                localStorage.setItem('registeredUserId', userId);
+                
+                // Show success message
+                errorMessage.textContent = "";
+                successMessage.textContent = "Registration successful! Redirecting to login...";
+                successMessage.style.display = "block";
+                
+                // Redirect to login after 2 seconds
+                setTimeout(() => {
+                    window.location.href = "../STUDENTLOGIN/studentlogin.html";
+                }, 2000);
+                
+            } catch (fetchError) {
+                retryCount++;
+                if (retryCount > maxRetries) {
+                    throw fetchError;
+                }
+                console.log(`Retrying registration (${retryCount}/${maxRetries})...`);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+            }
         }
-
-        if (!response.ok) {
-            throw new Error(data.message || 'Registration failed');
-        }
-
-        // Clear the form
-        document.getElementById('registerForm').reset();
-        
-        // Also save to localStorage as a backup
-        localStorage.setItem('lastRegisteredUser', JSON.stringify({
-            userId: userId,
-            name: name,
-            email: email,
-            registeredAt: new Date().toISOString()
-        }));
-
-        // Show success message
-        errorMessage.textContent = "";
-        successMessage.textContent = "Registration successful! Redirecting to login...";
-        successMessage.style.display = "block";
-
-        // Redirect to login after 2 seconds
-        setTimeout(() => {
-            window.location.href = "../STUDENTLOGIN/studentlogin.html";
-        }, 2000);
     } catch (error) {
         console.error("Registration error:", error);
         errorMessage.textContent = error.message || "Registration failed. Please try again.";
