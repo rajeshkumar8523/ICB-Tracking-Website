@@ -23,8 +23,32 @@ function closeModal() {
 }
 
 function guestLogin() {
+    // Set guest mode flag
+    localStorage.setItem('guestMode', 'true');
+    localStorage.setItem('userId', 'guest');
     window.location.href = "../HOME/home.html";
 }
+
+// For testing only - remove in production
+function createTestUser() {
+    if (!window.testUserCreated) {
+        const mockUsers = [
+            {
+                userId: "test",
+                name: "Test User",
+                email: "test@example.com",
+                password: "test123",
+                role: "user"
+            }
+        ];
+        localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
+        window.testUserCreated = true;
+        console.log('Test user created for offline mode');
+    }
+}
+
+// Uncomment to enable test user
+// createTestUser();
 
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -38,9 +62,33 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     successMessage.textContent = "";
     successMessage.style.display = "none";
 
+    // Show loading indicator
+    errorMessage.textContent = "Logging in...";
+
+    // Check for offline/demo mode
+    const mockUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+    const mockUser = mockUsers.find(u => u.userId === userId && u.password === password);
+    
+    if (mockUser) {
+        // Mock successful login
+        successMessage.textContent = "Login successful! Redirecting...";
+        successMessage.style.display = "block";
+        errorMessage.textContent = "";
+        
+        localStorage.setItem('userId', userId);
+        localStorage.setItem('userName', mockUser.name);
+        localStorage.setItem('userRole', mockUser.role);
+        localStorage.setItem('offlineMode', 'true');
+        
+        setTimeout(() => {
+            window.location.href = "../HOME/home.html";
+        }, 1000);
+        return;
+    }
+
     try {
-        // Use the centralized config for API URL
-        const API_BASE_URL = window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+        // For Vercel deployment
+        const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
         
         const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
@@ -53,24 +101,40 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             })
         });
 
-        const data = await response.json();
+        // Clear loading indicator
+        errorMessage.textContent = "";
 
-        if (!response.ok) {
-            throw new Error(data.message || 'Login failed');
+        // Special case for 401 errors - offer guest mode
+        if (response.status === 401) {
+            errorMessage.innerHTML = "Login failed: Invalid credentials.<br>You can <a href='#' onclick='guestLogin()'>continue as guest</a> or use the demo account: test/test123";
+            return;
         }
 
-        successMessage.textContent = "Login successful! Redirecting...";
-        successMessage.style.display = "block";
-        
-        // Store user ID for later use
-        localStorage.setItem('userId', userId);
-        
-        // Redirect to welcome page after 1 second
-        setTimeout(() => {
-            window.location.href = "../HOME/home.html";
-        }, 1000);
+        try {
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || `Login failed (${response.status})`);
+            }
+
+            successMessage.textContent = "Login successful! Redirecting...";
+            successMessage.style.display = "block";
+            
+            // Store user ID for later use
+            localStorage.setItem('userId', userId);
+            localStorage.setItem('offlineMode', 'false');
+            
+            // Redirect to welcome page after 1 second
+            setTimeout(() => {
+                window.location.href = "../HOME/home.html";
+            }, 1000);
+        } catch (jsonError) {
+            // Handle case where response is not valid JSON
+            throw new Error(`Server response error: ${response.status}`);
+        }
     } catch (error) {
-        errorMessage.textContent = error.message;
+        console.error("Login error:", error);
+        errorMessage.innerHTML = error.message + "<br>You can <a href='#' onclick='guestLogin()'>continue as guest</a> instead.";
     }
 });
 
@@ -93,8 +157,8 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     }
 
     try {
-        // Use Vercel deployment URL
-        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+        // For Vercel deployment
+        const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
         
         const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
             method: 'POST',
@@ -107,21 +171,26 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
             })
         });
 
-        const data = await response.json();
+        try {
+            const data = await response.json();
 
-        if (!response.ok) {
-            throw new Error(data.message || 'Password reset failed');
+            if (!response.ok) {
+                throw new Error(data.message || 'Password reset failed');
+            }
+
+            successMessage.textContent = "Password reset successfully!";
+            successMessage.style.display = "block";
+            
+            // Clear form and close modal after 2 seconds
+            setTimeout(() => {
+                document.getElementById("resetPasswordForm").reset();
+                closeModal();
+            }, 2000);
+        } catch (jsonError) {
+            throw new Error(`Server response error: ${response.status}`);
         }
-
-        successMessage.textContent = "Password reset successfully!";
-        successMessage.style.display = "block";
-        
-        // Clear form and close modal after 2 seconds
-        setTimeout(() => {
-            document.getElementById("resetPasswordForm").reset();
-            closeModal();
-        }, 2000);
     } catch (error) {
+        console.error("Reset password error:", error);
         errorMessage.textContent = error.message;
     }
 });
