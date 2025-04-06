@@ -15,7 +15,17 @@ function togglePassword(fieldId) {
 const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
 const LOGIN_ENDPOINT = '/api/login';
 const RESET_ENDPOINT = '/api/reset-password';
-const DB_URI = 'mongodb+srv://rajesh:rajesh@cluster0.cqkgbx3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+const REGISTER_ENDPOINT = '/api/register'; 
+const STATUS_ENDPOINT = '/api/status';
+
+// Default test user for development
+const TEST_USER = {
+    userId: "test123",
+    name: "Test User",
+    email: "test@example.com",
+    password: "test123",
+    role: "user"
+};
 
 function openModal() {
     document.getElementById("forgotPasswordModal").style.display = "flex";
@@ -31,16 +41,75 @@ function closeModal() {
 function guestLogin() {
     localStorage.setItem('guestMode', 'true');
     localStorage.setItem('userId', 'guest');
+    localStorage.setItem('userName', 'Guest User');
+    localStorage.setItem('userRole', 'guest');
     
     window.location.href = "../HOME/home.html";
 }
 
+// Create test user function
+async function createTestUser() {
+    try {
+        const response = await fetch(`${API_BASE_URL}${REGISTER_ENDPOINT}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(TEST_USER),
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        console.log("Test user creation result:", data);
+        
+        // If user already exists, that's fine too
+        return true;
+    } catch (error) {
+        console.error("Error creating test user:", error);
+        return false;
+    }
+}
+
+// Check server and DB status
+async function checkServerStatus() {
+    try {
+        const response = await fetch(`${API_BASE_URL}${STATUS_ENDPOINT}`);
+        if (response.ok) {
+            const data = await response.json();
+            console.log("Server status:", data);
+            return data.dbConnected;
+        }
+        return false;
+    } catch (error) {
+        console.error("Error checking server status:", error);
+        return false;
+    }
+}
+
 // Check if user was just registered and populate the userId field
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const registeredUserId = localStorage.getItem('registeredUserId');
     if (registeredUserId) {
         document.getElementById("userId").value = registeredUserId;
         localStorage.removeItem('registeredUserId'); // Clear it after use
+    }
+    
+    // Check server status and create test user if needed
+    const isDbConnected = await checkServerStatus();
+    if (!isDbConnected) {
+        console.log("Database not connected. Test user may be needed.");
+        await createTestUser();
+        
+        // Add test user credentials hint
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            const helpText = document.createElement('p');
+            helpText.innerHTML = `<small>Try test credentials: <br>ID: ${TEST_USER.userId}, Password: ${TEST_USER.password}</small>`;
+            helpText.style.color = '#666';
+            helpText.style.fontSize = '12px';
+            loginForm.appendChild(helpText);
+        }
     }
 });
 
@@ -69,21 +138,26 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     if (submitButton) submitButton.disabled = true;
     
     try {
+        // First check if we should try with test user credentials
+        const isTestUser = userId === TEST_USER.userId && password === TEST_USER.password;
+        
+        // Create test user if the credentials match but we haven't registered it yet
+        if (isTestUser) {
+            await createTestUser();
+        }
+        
         const apiUrl = `${API_BASE_URL}${LOGIN_ENDPOINT}`;
         console.log(`Authenticating with: ${apiUrl}`);
-        console.log(`DB URI being used: ${DB_URI}`);
         
         // Use retry mechanism for auth
         const maxRetries = 2;
         let retryCount = 0;
         let success = false;
-        let finalResponse = null;
-        let finalData = null;
         
         while (retryCount <= maxRetries && !success) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 20000); // Increased timeout to 20s
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
                 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -100,22 +174,28 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 });
                 
                 clearTimeout(timeoutId);
-                finalResponse = response;
                 console.log("Login response status:", response.status);
                 
                 // Parse response
                 let data;
                 try {
                     data = await response.json();
-                    finalData = data;
                     console.log("Login response data:", data);
                 } catch (jsonError) {
-                    console.error("Error parsing response:", jsonError);
                     throw new Error("Unable to parse server response. Please try again.");
                 }
                 
-                // Check if registered but failed login - no need to retry
+                // Handle 401 unauthorized errors
                 if (response.status === 401) {
+                    // If this is the test user and we got 401, maybe the server restarted
+                    // and lost the in-memory data. Try re-creating the test user.
+                    if (isTestUser && retryCount === 0) {
+                        console.log("Trying to recreate test user...");
+                        await createTestUser();
+                        retryCount++;
+                        continue;
+                    }
+                    
                     errorMessage.textContent = "Invalid username or password. Please try again.";
                     if (submitButton) submitButton.disabled = false;
                     return;
@@ -139,11 +219,12 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                     console.log("User authenticated successfully:", data.data.user.userId);
                 } else {
                     localStorage.setItem('userId', userId);
+                    localStorage.setItem('userName', 'User');
                 }
                 
                 // Show success and redirect
                 errorMessage.textContent = "";
-                successMessage.textContent = "Login successful! User data fetched from MongoDB. Redirecting...";
+                successMessage.textContent = "Login successful! Redirecting...";
                 successMessage.style.display = "block";
                 
                 setTimeout(() => {
@@ -154,24 +235,17 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 
                 if (fetchError.name === 'AbortError') {
                     console.log("Request timed out, retrying...");
-                    // Continue retry loop on timeout
                 } else if (retryCount > maxRetries) {
                     throw fetchError;
                 }
                 
                 console.log(`Retrying authentication (${retryCount}/${maxRetries})...`);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
         
         if (!success) {
-            if (finalResponse && finalResponse.status === 401) {
-                errorMessage.textContent = "Invalid username or password. Please try again.";
-            } else if (finalData && finalData.message) {
-                throw new Error(finalData.message);
-            } else {
-                throw new Error("Authentication failed after multiple attempts");
-            }
+            throw new Error("Authentication failed after multiple attempts");
         }
     } catch (error) {
         console.error("Login error:", error);
@@ -266,7 +340,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
             document.getElementById("resetPasswordForm").reset();
             
             // Show success message
-            successMessage.textContent = "Password reset successfully in MongoDB database!";
+            successMessage.textContent = "Password reset successfully!";
             successMessage.style.display = "block";
             
             setTimeout(() => {
