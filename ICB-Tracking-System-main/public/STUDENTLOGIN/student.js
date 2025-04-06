@@ -72,20 +72,16 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     }
 
     try {
-        // Use the centralized config for API URL if available, otherwise fall back to default
-        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+        // Use the centralized config for API URL if available, otherwise use the Vercel URL
+        const API_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
         
-        // For local testing - if running on localhost, use local API
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const apiUrl = isLocalhost ? 'http://localhost:5000' : API_BASE_URL;
-        
-        console.log(`Using API URL: ${apiUrl}/api/login`);
+        console.log(`Sending login request to: ${API_URL}/api/login`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased timeout to 10 seconds
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         
         try {
-            const response = await fetch(`${apiUrl}/api/login`, {
+            const response = await fetch(`${API_URL}/api/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -95,8 +91,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                     userId,
                     password
                 }),
-                signal: controller.signal,
-                credentials: 'include' // Include credentials for CORS
+                signal: controller.signal
             });
             
             clearTimeout(timeoutId);
@@ -175,18 +170,14 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     }
 
     try {
-        // Use the centralized config for API URL if available, otherwise fall back to default
-        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
-        
-        // For local testing - if running on localhost, use local API
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const apiUrl = isLocalhost ? 'http://localhost:5000' : API_BASE_URL;
+        // Use the centralized config for API URL if available, otherwise use the Vercel URL
+        const API_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased timeout to 10 seconds
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         
         try {
-            const response = await fetch(`${apiUrl}/api/reset-password`, {
+            const response = await fetch(`${API_URL}/api/reset-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -196,8 +187,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
                     userId,
                     newPassword
                 }),
-                signal: controller.signal,
-                credentials: 'include' // Include credentials for CORS
+                signal: controller.signal
             });
             
             clearTimeout(timeoutId);
