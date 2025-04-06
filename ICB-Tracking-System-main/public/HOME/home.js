@@ -1,5 +1,21 @@
-// Use the centralized config for API URL
-const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
+// Use the centralized config for API URL with better fallback
+let API_BASE_URL;
+try {
+  // Check if config exists and is properly loaded
+  if (typeof window.APP_CONFIG === 'object' && window.APP_CONFIG.API_BASE_URL) {
+    API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
+    console.log('Using API URL from config:', API_BASE_URL);
+  } else {
+    // Fallback if config not available
+    API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+    console.log('Using fallback API URL:', API_BASE_URL);
+  }
+} catch (e) {
+  // Emergency fallback
+  API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+  console.error('Error loading config:', e);
+}
+
 let socket;
 let socketConnected = false;
 
@@ -25,21 +41,18 @@ function initializeSocket() {
             socket.disconnect();
         }
         
-        // Use the createSocketConnection helper from config.js if available
-        if (window.APP_CONFIG && typeof window.APP_CONFIG.createSocketConnection === 'function') {
-            console.log('Using APP_CONFIG to create socket connection');
-            socket = window.APP_CONFIG.createSocketConnection();
-        } else {
-            // Fallback to direct connection
-            console.log('Connecting to socket at:', API_BASE_URL);
-            socket = io(API_BASE_URL, {
-                path: '/socket.io',
-                reconnectionAttempts: 5,
-                timeout: 20000,
-                transports: ['polling', 'websocket'],
-                forceNew: true
-            });
-        }
+        // Direct socket connection without relying on config.js
+        console.log('Connecting to socket at:', API_BASE_URL);
+        socket = io(API_BASE_URL, {
+            path: '/socket.io',
+            reconnectionAttempts: 5,
+            timeout: 20000,
+            transports: ['polling', 'websocket'],
+            forceNew: true,
+            autoConnect: true,
+            reconnection: true,
+            reconnectionDelay: 1000
+        });
         
         if (!socket) {
             console.error('Failed to create socket connection');
@@ -117,7 +130,7 @@ function highlight(element) {
     element.classList.add("active");
 }
 
-// Function to fetch and display all buses
+// Function to fetch and render buses
 async function fetchAndRenderBuses() {
     try {
         const container = document.getElementById('busContainer');
@@ -164,6 +177,52 @@ async function fetchAndRenderBuses() {
                 
                 const result = await response.json();
                 buses = result.data?.buses || [];
+                
+                // If socket is not connected, check for recent updates
+                if (!socketConnected && !isGuestMode) {
+                    console.log("Socket not connected, checking for bus updates via API");
+                    try {
+                        // Get the last update time or default to 5 minutes ago
+                        const lastUpdateTime = localStorage.getItem('lastUpdateTime') || 
+                            new Date(Date.now() - 5 * 60 * 1000).toISOString();
+                        
+                        const updatesResponse = await fetch(
+                            `${API_BASE_URL}/api/bus-updates?since=${encodeURIComponent(lastUpdateTime)}`, 
+                            { signal: controller.signal }
+                        );
+                        
+                        if (updatesResponse.ok) {
+                            const updatesData = await updatesResponse.json();
+                            console.log("Received updates via API:", updatesData);
+                            
+                            // Store the current time as last update time
+                            localStorage.setItem('lastUpdateTime', new Date().toISOString());
+                            
+                            // If we got updates, update the buses data
+                            if (updatesData.data && updatesData.data.updates && updatesData.data.updates.length > 0) {
+                                // Update bus locations if needed
+                                buses = buses.map(bus => {
+                                    // Find the latest update for this bus
+                                    const latestUpdate = updatesData.data.updates.find(u => u.busNumber === bus.busNumber);
+                                    if (latestUpdate) {
+                                        // Update bus with latest location
+                                        return {
+                                            ...bus,
+                                            latitude: latestUpdate.latitude,
+                                            longitude: latestUpdate.longitude,
+                                            lastUpdated: latestUpdate.timestamp
+                                        };
+                                    }
+                                    return bus;
+                                });
+                                
+                                showUpdateNotification(`Updates received at: ${new Date().toLocaleTimeString()}`);
+                            }
+                        }
+                    } catch (updateError) {
+                        console.warn("Failed to get updates via API:", updateError);
+                    }
+                }
             } catch (apiError) {
                 console.error('API error:', apiError);
                 if (apiError.name === 'AbortError') {
@@ -257,6 +316,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch buses immediately
     fetchAndRenderBuses();
     
-    // Set up refresh interval - less frequent to reduce server load
-    setInterval(fetchAndRenderBuses, 60000); // Every minute
+    // Set up refresh intervals
+    // More frequent polling if socket is not connected
+    setInterval(() => {
+        if (!socketConnected && !localStorage.getItem('guestMode') === 'true') {
+            console.log("Socket not connected, using HTTP polling instead");
+            fetchAndRenderBuses();
+        }
+    }, 30000); // Poll every 30 seconds if socket is down
+    
+    // Less frequent background refresh regardless of socket status
+    setInterval(fetchAndRenderBuses, 120000); // Every 2 minutes
 });
