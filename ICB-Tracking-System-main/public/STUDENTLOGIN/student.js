@@ -15,17 +15,7 @@ function togglePassword(fieldId) {
 const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
 const LOGIN_ENDPOINT = '/api/login';
 const RESET_ENDPOINT = '/api/reset-password';
-const REGISTER_ENDPOINT = '/api/register'; 
 const STATUS_ENDPOINT = '/api/status';
-
-// Default test user for development
-const TEST_USER = {
-    userId: "test123",
-    name: "Test User",
-    email: "test@example.com",
-    password: "test123",
-    role: "user"
-};
 
 function openModal() {
     document.getElementById("forgotPasswordModal").style.display = "flex";
@@ -47,31 +37,7 @@ function guestLogin() {
     window.location.href = "../HOME/home.html";
 }
 
-// Create test user function
-async function createTestUser() {
-    try {
-        const response = await fetch(`${API_BASE_URL}${REGISTER_ENDPOINT}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(TEST_USER),
-            credentials: 'include'
-        });
-        
-        const data = await response.json();
-        console.log("Test user creation result:", data);
-        
-        // If user already exists, that's fine too
-        return true;
-    } catch (error) {
-        console.error("Error creating test user:", error);
-        return false;
-    }
-}
-
-// Check server and DB status
+// Check server status
 async function checkServerStatus() {
     try {
         const response = await fetch(`${API_BASE_URL}${STATUS_ENDPOINT}`);
@@ -95,21 +61,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         localStorage.removeItem('registeredUserId'); // Clear it after use
     }
     
-    // Check server status and create test user if needed
+    // Check server status
     const isDbConnected = await checkServerStatus();
     if (!isDbConnected) {
-        console.log("Database not connected. Test user may be needed.");
-        await createTestUser();
-        
-        // Add test user credentials hint
-        const loginForm = document.getElementById('loginForm');
-        if (loginForm) {
-            const helpText = document.createElement('p');
-            helpText.innerHTML = `<small>Try test credentials: <br>ID: ${TEST_USER.userId}, Password: ${TEST_USER.password}</small>`;
-            helpText.style.color = '#666';
-            helpText.style.fontSize = '12px';
-            loginForm.appendChild(helpText);
-        }
+        console.log("Warning: Database not connected. Authentication may use fallback mechanisms.");
     }
 });
 
@@ -138,14 +93,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     if (submitButton) submitButton.disabled = true;
     
     try {
-        // First check if we should try with test user credentials
-        const isTestUser = userId === TEST_USER.userId && password === TEST_USER.password;
-        
-        // Create test user if the credentials match but we haven't registered it yet
-        if (isTestUser) {
-            await createTestUser();
-        }
-        
         const apiUrl = `${API_BASE_URL}${LOGIN_ENDPOINT}`;
         console.log(`Authenticating with: ${apiUrl}`);
         
@@ -187,15 +134,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 
                 // Handle 401 unauthorized errors
                 if (response.status === 401) {
-                    // If this is the test user and we got 401, maybe the server restarted
-                    // and lost the in-memory data. Try re-creating the test user.
-                    if (isTestUser && retryCount === 0) {
-                        console.log("Trying to recreate test user...");
-                        await createTestUser();
-                        retryCount++;
-                        continue;
-                    }
-                    
                     errorMessage.textContent = "Invalid username or password. Please try again.";
                     if (submitButton) submitButton.disabled = false;
                     return;
@@ -297,7 +235,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
         console.log(`Resetting password at: ${apiUrl}`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // Increased timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
         
         try {
             const response = await fetch(apiUrl, {
