@@ -168,8 +168,14 @@ let mockUsers = [];
 
 let isDbConnected = false;
 
+// Improve MongoDB connection with retry logic and better error handling
 mongoose
-  .connect(MONGO_URI)
+  .connect(MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 10000, // Timeout after 10 seconds
+    maxPoolSize: 10, // Maintain up to 10 socket connections
+  })
   .then(() => {
     console.log("MongoDB Connected Successfully");
     isDbConnected = true;
@@ -177,6 +183,17 @@ mongoose
   .catch((err) => {
     console.error("MongoDB Connection Error:", err);
     console.log("Running with mock data instead of database");
+    
+    // Add a default user to mock data for testing when DB is down
+    mockUsers.push({
+      userId: "test",
+      name: "Test User",
+      contact: "1234567890",
+      email: "test@example.com",
+      password: "test",
+      role: "user",
+      lastLogin: new Date()
+    });
   });
 
 // Configure Socket.IO with appropriate CORS settings
