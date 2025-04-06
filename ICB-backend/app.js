@@ -93,6 +93,23 @@ const io = socketio(server, {
   },
 });
 
+// Add special handler for location tracking
+const locationUpdates = {
+  lastUpdates: {},
+  updateBusLocation: function(busNumber, data) {
+    this.lastUpdates[busNumber] = {
+      ...data,
+      timestamp: new Date()
+    };
+  },
+  getLastUpdate: function(busNumber) {
+    return this.lastUpdates[busNumber] || null;
+  },
+  getAllUpdates: function() {
+    return this.lastUpdates;
+  }
+};
+
 // Database Schemas
 const userSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
@@ -142,13 +159,25 @@ const getClientIp = (req) => {
 
 // Socket.IO Connection Handling
 io.on("connection", (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+  
   socket.on("joinBus", (busNumber) => {
     socket.join(busNumber);
+    console.log(`Client ${socket.id} joined bus ${busNumber}`);
+    
+    // Send last known location if available
+    const lastUpdate = locationUpdates.getLastUpdate(busNumber);
+    if (lastUpdate) {
+      socket.emit("busLocation", lastUpdate);
+    }
   });
   
   socket.on("locationUpdate", async (data) => {
     try {
       const { busNumber, latitude, longitude, speed, direction } = data;
+      
+      // Store latest update in memory for quick access
+      locationUpdates.updateBusLocation(busNumber, data);
       
       if (isDbConnected) {
         // Save to database
@@ -198,8 +227,13 @@ io.on("connection", (socket) => {
         timestamp: new Date(),
       });
     } catch (error) {
+      console.error("Error handling location update:", error);
       socket.emit("error", { message: "Failed to update location" });
     }
+  });
+  
+  socket.on("disconnect", () => {
+    console.log(`Socket disconnected: ${socket.id}`);
   });
 });
 
@@ -761,14 +795,101 @@ app.get("/api/trackers/history/:busNumber", async (req, res, next) => {
   }
 });
 
-// Status endpoint
+// Add improved trackers endpoints for location tracking
+app.get("/api/trackers/recent/:busNumber", async (req, res) => {
+  try {
+    const { busNumber } = req.params;
+    const { since } = req.query;
+    let sinceDate = since ? new Date(since) : new Date(Date.now() - 3600000); // Default to last hour
+    
+    // Check memory cache first for latest update
+    const lastMemoryUpdate = locationUpdates.getLastUpdate(busNumber);
+    
+    if (isDbConnected) {
+      const query = { 
+        busNumber,
+        timestamp: { $gte: sinceDate }
+      };
+      
+      const trackers = await Tracker.find(query)
+        .sort({ timestamp: -1 })
+        .limit(10);
+      
+      // Merge with memory cache if more recent
+      if (lastMemoryUpdate && (!trackers.length || 
+          new Date(lastMemoryUpdate.timestamp) > new Date(trackers[0].timestamp))) {
+        res.status(200).json({
+          status: "success",
+          results: trackers.length + 1,
+          source: "hybrid",
+          data: { 
+            trackers: [lastMemoryUpdate, ...trackers].slice(0, 10)
+          },
+        });
+      } else {
+        res.status(200).json({
+          status: "success",
+          results: trackers.length,
+          source: "database",
+          data: { trackers },
+        });
+      }
+    } else {
+      // Use mock data
+      let filteredTrackers = mockTrackers
+        .filter(t => t.busNumber === busNumber && new Date(t.timestamp) >= sinceDate)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 10);
+      
+      // Merge with memory cache if more recent
+      if (lastMemoryUpdate) {
+        if (!filteredTrackers.length || 
+            new Date(lastMemoryUpdate.timestamp) > new Date(filteredTrackers[0].timestamp)) {
+          filteredTrackers = [lastMemoryUpdate, ...filteredTrackers].slice(0, 10);
+        }
+      }
+      
+      res.status(200).json({
+        status: "success",
+        results: filteredTrackers.length,
+        source: "cache",
+        data: { trackers: filteredTrackers },
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching recent trackers:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to fetch recent tracking data",
+    });
+  }
+});
+
+// Enhanced status endpoint with more details
 app.get("/api/status", (req, res) => {
+  // Count buses with recent locations (updated in the last hour)
+  const oneHourAgo = new Date(Date.now() - 3600000);
+  const activeBuses = mockBuses.filter(b => 
+    b.lastUpdated && new Date(b.lastUpdated) > oneHourAgo
+  ).length;
+  
+  const memoryUpdates = Object.keys(locationUpdates.getAllUpdates()).length;
+  
   res.status(200).json({
     status: "success",
     message: "API is operational",
     dbConnected: isDbConnected,
-    serverTime: new Date().toISOString()
+    mongoUri: MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'), // Hide credentials
+    activeBuses: activeBuses,
+    recentUpdates: memoryUpdates,
+    serverTime: new Date().toISOString(),
+    uptime: process.uptime()
   });
+});
+
+// Redirect for compatibility with older versions
+app.get("/api/bus-location/:busNumber", (req, res) => {
+  res.redirect(`/api/trackers/${req.params.busNumber}`);
 });
 
 // Route for serving index HTML
