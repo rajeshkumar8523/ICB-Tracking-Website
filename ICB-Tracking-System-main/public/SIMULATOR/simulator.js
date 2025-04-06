@@ -1,6 +1,54 @@
 // Use the centralized config for API URL
-API_BASE_URL = 'https://icb-tracking-website.vercel.app';
-const socket = io(API_BASE_URL);
+const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
+let socket;
+
+// Initialize socket connection
+function initializeSocket() {
+  try {
+    // Check if socket.io is available
+    if (typeof io === 'undefined') {
+      console.error('Socket.io library not available');
+      return;
+    }
+    
+    // Use the createSocketConnection helper from config.js if available
+    if (window.APP_CONFIG && typeof window.APP_CONFIG.createSocketConnection === 'function') {
+      console.log('Using APP_CONFIG to create socket connection');
+      socket = window.APP_CONFIG.createSocketConnection();
+    } else {
+      // Fallback to direct connection
+      console.log('Connecting to socket at:', API_BASE_URL);
+      socket = io(API_BASE_URL, {
+        path: '/socket.io',
+        reconnectionAttempts: 5,
+        timeout: 20000,
+        transports: ['polling', 'websocket'],
+        forceNew: true
+      });
+    }
+    
+    if (!socket) {
+      console.error('Failed to create socket connection');
+      return false;
+    }
+    
+    socket.on('connect', () => {
+      console.log('Socket connected successfully');
+      showResult('Socket connected', 'success');
+    });
+    
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      showResult(`Socket connection error: ${error.message}`, 'error');
+    });
+    
+    return true;
+  } catch (e) {
+    console.error('Failed to initialize socket:', e);
+    showResult(`Socket error: ${e.message}`, 'error');
+    return false;
+  }
+}
 
 // Default coordinates (center of Hyderabad)
 const defaultCoordinates = [17.3850, 78.4867];
@@ -205,7 +253,23 @@ cancelMapBtn.addEventListener('click', function() {
     formSection.style.display = 'block';
 });
 
+// Function to show result messages
+function showResult(message, type = 'info') {
+  resultMessage.textContent = message;
+  resultMessage.className = `message ${type}`;
+  resultMessage.style.display = 'block';
+  
+  // Hide after 5 seconds
+  setTimeout(() => {
+    resultMessage.style.display = 'none';
+  }, 5000);
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize socket connection
+    initializeSocket();
+    
+    // Load bus list
     fetchBuses();
 }); 
