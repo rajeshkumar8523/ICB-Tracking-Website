@@ -12,6 +12,10 @@ function togglePassword(fieldId) {
     }
 }
 
+// API URL Configuration
+const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+const REGISTER_ENDPOINT = '/api/register';
+
 // Handle Form Submission
 document.getElementById('registerForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -43,18 +47,20 @@ document.getElementById('registerForm').addEventListener('submit', async functio
 
     // Display loading state
     errorMessage.textContent = "Processing registration...";
+    document.getElementById("submitBtn").disabled = true;
 
     try {
         // Prepare the user data
         const userData = {
-            userId: userId,
-            name: name,
-            contact: contact,
-            email: email,
-            password: newPassword
+            userId: userId.trim(),
+            name: name.trim(),
+            contact: contact.trim(),
+            email: email.trim(),
+            password: newPassword,
+            role: "user"
         };
         
-        console.log("Sending registration data");
+        console.log("Sending registration data to MongoDB");
         
         // Use an appropriate retry mechanism
         const maxRetries = 2;
@@ -64,14 +70,15 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         while (retryCount <= maxRetries && !success) {
             try {
                 // Sending data to the server
-                const response = await fetch('https://icb-tracking-website.vercel.app/api/register', {
+                const response = await fetch(`${API_BASE_URL}${REGISTER_ENDPOINT}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify(userData),
-                    timeout: 10000 // 10 second timeout
+                    credentials: 'include',
+                    timeout: 15000 // 15 second timeout
                 });
                 
                 // Log response status
@@ -81,13 +88,13 @@ document.getElementById('registerForm').addEventListener('submit', async functio
                 let data;
                 try {
                     data = await response.json();
-                    console.log("Registration response received");
+                    console.log("Registration response received", data);
                 } catch (jsonError) {
                     console.error("Error parsing response:", jsonError);
                     throw new Error("Server returned invalid data. Please try again.");
                 }
                 
-                if (response.status === 400 && data.message.includes("already exists")) {
+                if (response.status === 400 && data.message && data.message.includes("already exists")) {
                     throw new Error("User ID or Email already exists. Please use different credentials.");
                 }
                 
@@ -102,10 +109,11 @@ document.getElementById('registerForm').addEventListener('submit', async functio
                 
                 // Save user info and show success
                 localStorage.setItem('registeredUserId', userId);
+                localStorage.setItem('registeredName', name);
                 
                 // Show success message
                 errorMessage.textContent = "";
-                successMessage.textContent = "Registration successful! Redirecting to login...";
+                successMessage.textContent = "Registration successful! Your details have been stored in MongoDB. Redirecting to login...";
                 successMessage.style.display = "block";
                 
                 // Redirect to login after 2 seconds
@@ -126,5 +134,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         console.error("Registration error:", error);
         errorMessage.textContent = error.message || "Registration failed. Please try again.";
         successMessage.style.display = "none";
+    } finally {
+        document.getElementById("submitBtn").disabled = false;
     }
 });
