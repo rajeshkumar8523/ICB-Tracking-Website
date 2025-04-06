@@ -51,7 +51,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     const password = document.getElementById("password").value;
     const errorMessage = document.getElementById("error-message");
     const successMessage = document.getElementById("success-message");
-    const loginButton = document.getElementById("loginButton");
+    const submitButton = this.querySelector('button[type="submit"]');
 
     // Clear previous messages
     errorMessage.textContent = "";
@@ -66,7 +66,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     
     // Show loading message and disable button
     errorMessage.textContent = "Authenticating...";
-    loginButton.disabled = true;
+    if (submitButton) submitButton.disabled = true;
     
     try {
         const apiUrl = `${API_BASE_URL}${LOGIN_ENDPOINT}`;
@@ -117,7 +117,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 // Check if registered but failed login - no need to retry
                 if (response.status === 401) {
                     errorMessage.textContent = "Invalid username or password. Please try again.";
-                    loginButton.disabled = false;
+                    if (submitButton) submitButton.disabled = false;
                     return;
                 }
                 
@@ -180,7 +180,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         // Add guest mode option if authentication fails
         errorMessage.innerHTML += ` <a href='#' onclick='guestLogin()'>Continue as guest</a>`;
     } finally {
-        loginButton.disabled = false;
+        if (submitButton) submitButton.disabled = false;
     }
 });
 
@@ -192,7 +192,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     const confirmPassword = document.getElementById("resetConfirmPassword").value;
     const errorMessage = document.getElementById("reset-error-message");
     const successMessage = document.getElementById("reset-success-message");
-    const resetButton = document.getElementById("resetButton");
+    const resetSubmitButton = this.querySelector('button[type="submit"]');
 
     errorMessage.textContent = "";
     successMessage.textContent = "";
@@ -216,7 +216,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     
     // Show loading message and disable button
     errorMessage.textContent = "Processing request...";
-    resetButton.disabled = true;
+    if (resetSubmitButton) resetSubmitButton.disabled = true;
 
     try {
         const apiUrl = `${API_BASE_URL}${RESET_ENDPOINT}`;
@@ -253,7 +253,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
             
             if (response.status === 404) {
                 errorMessage.textContent = "User not found. Please check your User ID.";
-                resetButton.disabled = false;
+                if (resetSubmitButton) resetSubmitButton.disabled = false;
                 return;
             }
             
@@ -285,6 +285,6 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
         console.error("Reset password error:", error);
         errorMessage.textContent = error.message || "Password reset failed. Please try again.";
     } finally {
-        resetButton.disabled = false;
+        if (resetSubmitButton) resetSubmitButton.disabled = false;
     }
 });
