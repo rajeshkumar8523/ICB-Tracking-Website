@@ -29,19 +29,6 @@ function guestLogin() {
     window.location.href = "../HOME/home.html";
 }
 
-function createDemoUser() {
-    localStorage.setItem('demoUser', JSON.stringify({
-        userId: "demo",
-        password: "demo123",
-        name: "Demo User",
-        email: "demo@example.com",
-        role: "user"
-    }));
-    console.log("Demo user created - use demo/demo123 to login");
-}
-
-createDemoUser();
-
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -50,29 +37,22 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     const errorMessage = document.getElementById("error-message");
     const successMessage = document.getElementById("success-message");
 
+    // Clear previous messages
     errorMessage.textContent = "";
     successMessage.textContent = "";
     successMessage.style.display = "none";
     
-    errorMessage.textContent = "Processing...";
-    
-    const demoUser = JSON.parse(localStorage.getItem('demoUser') || '{}');
-    if (userId === demoUser.userId && password === demoUser.password) {
-        errorMessage.textContent = "";
-        successMessage.textContent = "Login successful! Redirecting...";
-        successMessage.style.display = "block";
-        
-        localStorage.setItem('userId', userId);
-        localStorage.setItem('demoMode', 'true');
-        
-        setTimeout(() => {
-            window.location.href = "../HOME/home.html";
-        }, 1000);
+    // Validate input
+    if (!userId || !password) {
+        errorMessage.textContent = "Please enter both user ID and password";
         return;
     }
-
+    
+    // Show loading message
+    errorMessage.textContent = "Authenticating...";
+    
     try {
-        // Use the Vercel deployment URL (fix the endpoint URL)
+        // Use the Vercel deployment URL
         const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
         const LOGIN_ENDPOINT = '/api/login';
         
@@ -80,7 +60,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         console.log(`Authenticating with: ${apiUrl}`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout
         
         try {
             const response = await fetch(apiUrl, {
@@ -97,22 +77,31 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             });
             
             clearTimeout(timeoutId);
+            console.log("Login response status:", response.status);
             
-            if (response.status === 401) {
-                errorMessage.innerHTML = "Invalid username or password. You can use demo/demo123 or <a href='#' onclick='guestLogin()'>continue as guest</a>";
-                return;
-            }
-            
+            // Parse response
             let data;
             try {
                 data = await response.json();
+                console.log("Login response data:", data);
             } catch (jsonError) {
-                throw new Error("Unable to parse server response");
+                console.error("Error parsing response:", jsonError);
+                throw new Error("Unable to parse server response. Please try again.");
             }
             
+            // Handle unauthorized (wrong credentials)
+            if (response.status === 401) {
+                errorMessage.textContent = "Invalid username or password. Please try again.";
+                return;
+            }
+            
+            // Handle other errors
             if (!response.ok) {
                 throw new Error(data.message || `Server error (${response.status})`);
             }
+            
+            // Login successful
+            errorMessage.textContent = "";
             
             // Store user data from response
             if (data && data.data && data.data.user) {
@@ -121,13 +110,14 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 localStorage.setItem('userId', data.data.user.userId);
                 localStorage.setItem('userRole', data.data.user.role || 'user');
                 localStorage.setItem('userName', data.data.user.name);
+                
+                console.log("User authenticated successfully:", data.data.user.userId);
             } else {
                 localStorage.setItem('userId', userId);
             }
             
             successMessage.textContent = "Login successful! Redirecting...";
             successMessage.style.display = "block";
-            errorMessage.textContent = "";
             
             setTimeout(() => {
                 window.location.href = "../HOME/home.html";
@@ -136,14 +126,17 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             clearTimeout(timeoutId);
             
             if (fetchError.name === 'AbortError') {
-                throw new Error("Request timed out. Server may be unavailable.");
+                throw new Error("Authentication request timed out. Please try again.");
             }
             
             throw fetchError;
         }
     } catch (error) {
         console.error("Login error:", error);
-        errorMessage.innerHTML = `${error.message}. You can <a href='#' onclick='guestLogin()'>continue as guest</a> or use demo/demo123`;
+        errorMessage.textContent = error.message || "Login failed. Please try again.";
+        
+        // Add guest mode option if authentication fails
+        errorMessage.innerHTML += ` <a href='#' onclick='guestLogin()'>Continue as guest</a>`;
     }
 });
 
@@ -160,28 +153,27 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     successMessage.textContent = "";
     successMessage.style.display = "none";
 
+    // Validate input
+    if (!userId) {
+        errorMessage.textContent = "Please enter your User ID";
+        return;
+    }
+    
+    if (!newPassword || !confirmPassword) {
+        errorMessage.textContent = "Please enter both password fields";
+        return;
+    }
+
     if (newPassword !== confirmPassword) {
         errorMessage.textContent = "Passwords do not match!";
         return;
     }
     
-    const demoUser = JSON.parse(localStorage.getItem('demoUser') || '{}');
-    if (userId === demoUser.userId) {
-        demoUser.password = newPassword;
-        localStorage.setItem('demoUser', JSON.stringify(demoUser));
-        
-        successMessage.textContent = "Demo password reset successfully!";
-        successMessage.style.display = "block";
-        
-        setTimeout(() => {
-            document.getElementById("resetPasswordForm").reset();
-            closeModal();
-        }, 2000);
-        return;
-    }
+    // Show loading message
+    errorMessage.textContent = "Processing request...";
 
     try {
-        // Use the Vercel deployment URL (fix the endpoint URL)
+        // Use the Vercel deployment URL
         const API_BASE_URL = 'https://icb-tracking-website.vercel.app';
         const RESET_ENDPOINT = '/api/reset-password';
         
@@ -189,7 +181,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
         console.log(`Resetting password at: ${apiUrl}`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout
         
         try {
             const response = await fetch(apiUrl, {
@@ -206,23 +198,34 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
             });
             
             clearTimeout(timeoutId);
+            console.log("Password reset response status:", response.status);
             
             let data;
             try {
                 data = await response.json();
+                console.log("Password reset response data:", data);
             } catch (jsonError) {
                 throw new Error("Unable to parse server response");
+            }
+            
+            if (response.status === 404) {
+                errorMessage.textContent = "User not found. Please check your User ID.";
+                return;
             }
             
             if (!response.ok) {
                 throw new Error(data.message || 'Password reset failed');
             }
             
+            // Clear form and error message
+            errorMessage.textContent = "";
+            document.getElementById("resetPasswordForm").reset();
+            
+            // Show success message
             successMessage.textContent = "Password reset successfully!";
             successMessage.style.display = "block";
             
             setTimeout(() => {
-                document.getElementById("resetPasswordForm").reset();
                 closeModal();
             }, 2000);
         } catch (fetchError) {
@@ -236,6 +239,6 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
         }
     } catch (error) {
         console.error("Reset password error:", error);
-        errorMessage.textContent = error.message;
+        errorMessage.textContent = error.message || "Password reset failed. Please try again.";
     }
 });
