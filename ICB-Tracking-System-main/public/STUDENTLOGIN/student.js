@@ -131,14 +131,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             const helpText = document.createElement('div');
             helpText.innerHTML = `
                 <div style="margin-top: 10px; padding: 8px; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px;">
-                    <p style="color: #ad6800; margin: 0 0 5px 0;"><strong>⚠️ Database Connection Issue</strong></p>
-                    <p style="color: #5c3c00; margin: 0 0 5px 0; font-size: 13px;">
-                        The app is running in fallback mode. Use these emergency credentials:
-                    </p>
-                    <p style="color: #5c3c00; margin: 0; font-size: 12px;">
-                        Username: <strong>${DEFAULT_USER.userId}</strong><br>
-                        Password: <strong>${DEFAULT_USER.password}</strong>
-                    </p>
+                    <p style="color: #ad6800; margin: 0 0 5px 0;"><Server Issue!></p>
+                    <p style="color: #ad6800; margin: 0 0 5px 0;"><Use Guest Mode!></p>
+                    
                 </div>
             `;
             loginForm.appendChild(helpText);
