@@ -1,28 +1,105 @@
 // Use the centralized config for API URL
 const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
 let socket;
+let socketConnected = false;
 
 // Initialize socket if not in guest mode
-try {
-    socket = io(API_BASE_URL);
+function initializeSocket() {
+    // Check if we're in guest mode
+    const isGuestMode = localStorage.getItem('guestMode') === 'true';
     
-    // Listen for real-time bus location updates
-    socket.on('busLocation', (data) => {
-        showUpdateNotification(`just now`);
-        console.log('Received location update for bus:', data.busNumber);
-    });
+    if (isGuestMode) {
+        console.log('Guest mode active - skipping socket connection');
+        return;
+    }
     
-    socket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
-    });
-} catch (e) {
-    console.error('Failed to initialize socket:', e);
+    // Check if socket.io is available
+    if (typeof io === 'undefined') {
+        console.error('Socket.io library not available');
+        return;
+    }
+    
+    try {
+        // Close existing socket if any
+        if (socket) {
+            socket.disconnect();
+        }
+        
+        // Use the createSocketConnection helper from config.js if available
+        if (window.APP_CONFIG && typeof window.APP_CONFIG.createSocketConnection === 'function') {
+            console.log('Using APP_CONFIG to create socket connection');
+            socket = window.APP_CONFIG.createSocketConnection();
+        } else {
+            // Fallback to direct connection
+            console.log('Connecting to socket at:', API_BASE_URL);
+            socket = io(API_BASE_URL, {
+                path: '/socket.io',
+                reconnectionAttempts: 5,
+                timeout: 20000,
+                transports: ['polling', 'websocket'],
+                forceNew: true
+            });
+        }
+        
+        if (!socket) {
+            console.error('Failed to create socket connection');
+            return;
+        }
+        
+        // Socket event handlers
+        socket.on('connect', () => {
+            console.log('Socket connected successfully');
+            socketConnected = true;
+            showUpdateNotification('Connected to live updates');
+        });
+        
+        // Listen for real-time bus location updates
+        socket.on('busLocation', (data) => {
+            showUpdateNotification(`Bus ${data.busNumber} location updated just now`);
+            console.log('Received location update for bus:', data.busNumber);
+            // Refresh bus list when we get an update
+            fetchAndRenderBuses();
+        });
+        
+        socket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+            socketConnected = false;
+            // Don't show this error to user - just log it
+        });
+        
+        socket.on('disconnect', (reason) => {
+            console.log('Socket disconnected:', reason);
+            socketConnected = false;
+            
+            // Attempt to reconnect if not intentionally disconnected
+            if (reason === 'io server disconnect') {
+                // The server has forcefully disconnected the socket
+                setTimeout(() => {
+                    console.log('Attempting to reconnect socket...');
+                    socket.connect();
+                }, 5000);
+            }
+        });
+        
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            socketConnected = false;
+        });
+    } catch (e) {
+        console.error('Failed to initialize socket:', e);
+        socketConnected = false;
+    }
 }
 
 // Function to show update notification
 function showUpdateNotification(message) {
     const notification = document.getElementById('updateNotification');
     const updateTime = document.getElementById('updateTime');
+    
+    if (!notification || !updateTime) {
+        console.error('Notification elements not found');
+        return;
+    }
 
     updateTime.textContent = message;
     notification.style.display = 'block';
@@ -44,6 +121,11 @@ function highlight(element) {
 async function fetchAndRenderBuses() {
     try {
         const container = document.getElementById('busContainer');
+        if (!container) {
+            console.error('Bus container element not found');
+            return;
+        }
+        
         container.innerHTML = '<div class="loading">Loading buses...</div>'; // Show loading
         
         // Check if we're in guest mode
@@ -59,19 +141,41 @@ async function fetchAndRenderBuses() {
                 { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "active", contactNumber: "+917981321537" },
                 { busNumber: "03", route: "COLLEGE TO METTUGADA", currentStatus: "inactive", contactNumber: "+917981321538" }
             ];
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 500));
         } else {
-            // Fetch real data from API
+            // Fetch real data from API with timeout
             try {
                 console.log("Fetching buses from:", `${API_BASE_URL}/api/buses`);
-                const response = await fetch(`${API_BASE_URL}/api/buses`);
+                
+                // Create AbortController for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                
+                const response = await fetch(`${API_BASE_URL}/api/buses`, {
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId); // Clear timeout
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
                 const result = await response.json();
                 buses = result.data?.buses || [];
             } catch (apiError) {
                 console.error('API error:', apiError);
-                throw apiError;
+                if (apiError.name === 'AbortError') {
+                    // Handle timeout specifically
+                    console.log('Request timed out, using fallback data');
+                    buses = [
+                        { busNumber: "01", route: "COLLEGE TO JADCHERLA", currentStatus: "unknown", contactNumber: "+917981321536" },
+                        { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "unknown", contactNumber: "+917981321537" }
+                    ];
+                } else {
+                    throw apiError;
+                }
             }
         }
 
@@ -118,7 +222,8 @@ async function fetchAndRenderBuses() {
             });
 
             // Show update notification
-            showUpdateNotification('just now');
+            const updateType = socketConnected ? 'Live update' : 'Last update';
+            showUpdateNotification(`${updateType}: ${new Date().toLocaleTimeString()}`);
         } else {
             // Handle empty bus list
             container.innerHTML = '<div class="no-buses">No buses available</div>';
@@ -126,7 +231,10 @@ async function fetchAndRenderBuses() {
     } catch (error) {
         console.error('Error fetching buses:', error);
         const container = document.getElementById('busContainer');
-        container.innerHTML = '<div class="error">Failed to load bus data. Please try again later.</div>';
+        container.innerHTML = `
+            <div class="error">Failed to load bus data. Please try again later.</div>
+            <button onclick="fetchAndRenderBuses()" class="retry-button">Retry</button>
+        `;
         showUpdateNotification('Error updating');
     }
 }
@@ -143,8 +251,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
+    // Initialize the socket connection
+    initializeSocket();
+    
+    // Fetch buses immediately
     fetchAndRenderBuses();
     
-    // Refresh bus list every 30 seconds
-    setInterval(fetchAndRenderBuses, 30000);
+    // Set up refresh interval - less frequent to reduce server load
+    setInterval(fetchAndRenderBuses, 60000); // Every minute
 });
