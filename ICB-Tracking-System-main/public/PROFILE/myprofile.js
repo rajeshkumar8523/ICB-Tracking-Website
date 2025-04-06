@@ -1,7 +1,4 @@
-*js*
-
-
-
+// myprofile.js
 
 // Use the centralized config for API URL
 const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/profile` : 'https://icb-tracking-website.vercel.app/api/profile';
@@ -60,6 +57,9 @@ function displayProfile(profile) {
     if (profile.profileImg && profile.profileImg !== "default-profile.jpg") {
         document.getElementById('profileImg').src = profile.profileImg;
     }
+
+    // Make sure fields are disabled by default after loading
+    disableEditing();
 }
 
 function uploadImage() {
@@ -120,7 +120,6 @@ async function saveProfile() {
             const updatedProfile = await response.json();
             localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
             displayProfile(updatedProfile);
-            disableEditing();
             alert("Profile saved successfully!");
         } else {
             throw new Error('Failed to save profile');
