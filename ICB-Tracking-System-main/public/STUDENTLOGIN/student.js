@@ -40,7 +40,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
     try {
         // Use the centralized config for API URL
-        const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
+        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
         
         const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
@@ -93,10 +93,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     }
 
     try {
-        // Use the centralized config for API URL
-        const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
-        
-        const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
+        const response = await fetch('http://192.168.0.245:5000/api/reset-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
