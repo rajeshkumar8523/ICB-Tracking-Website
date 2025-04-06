@@ -39,19 +39,6 @@ app.use(express.static(path.join(__dirname, '../ICB-Tracking-System-main/public'
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://rajesh:rajesh@cluster0.cqkgbx3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 let isDbConnected = false;
 
-// Mock data (used only if DB connection fails)
-let mockBuses = [
-  { busNumber: "01", route: "COLLEGE TO JADCHERLA", driverId: "D1001", currentStatus: "active", capacity: 40, contactNumber: "+917981321536", lastUpdated: new Date() },
-  { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", driverId: "D1002", currentStatus: "active", capacity: 35, contactNumber: "+917981321537", lastUpdated: new Date() },
-  { busNumber: "03", route: "COLLEGE TO METTUGADA", driverId: "D1003", currentStatus: "active", capacity: 38, contactNumber: "+917981321538", lastUpdated: new Date() },
-  { busNumber: "04", route: "COLLEGE TO PADMAVATHI-COLLONY", driverId: "D1004", currentStatus: "active", capacity: 42, contactNumber: "+917981321539", lastUpdated: new Date() },
-  { busNumber: "05", route: "COLLEGE TO HOUSING-BOARD", driverId: "D1005", currentStatus: "active", capacity: 40, contactNumber: "+917981321540", lastUpdated: new Date() },
-  { busNumber: "06", route: "COLLEGE TO KOTHAKOTA", driverId: "D1006", currentStatus: "active", capacity: 35, contactNumber: "+917981321541", lastUpdated: new Date() },
-  { busNumber: "07", route: "COLLEGE TO HOUSING-BOARD", driverId: "D1007", currentStatus: "inactive", capacity: 40, contactNumber: "+917981321542", lastUpdated: new Date() }
-];
-let mockTrackers = [];
-let mockUsers = [];
-
 // Connect to MongoDB with improved error handling and retry logic
 const connectWithRetry = () => {
   console.log('MongoDB connection with retry');
@@ -202,43 +189,26 @@ io.on("connection", (socket) => {
       // Store latest update in memory for quick access
       locationUpdates.updateBusLocation(busNumber, data);
       
-      if (isDbConnected) {
-        // Save to database
-        const tracker = new Tracker({
-          deviceId: socket.id,
-          busNumber,
-          latitude,
-          longitude,
-          speed,
-          direction,
-        });
-        await tracker.save();
-        await Bus.findOneAndUpdate(
-          { busNumber },
-          { lastUpdated: new Date(), latitude, longitude },
-          { upsert: true }
-        );
-      } else {
-        // Update mock data
-        const trackerData = {
-          deviceId: socket.id,
-          busNumber,
-          latitude,
-          longitude,
-          speed,
-          direction,
-          timestamp: new Date()
-        };
-        
-        mockTrackers.push(trackerData);
-        
-        const busIndex = mockBuses.findIndex(b => b.busNumber === busNumber);
-        if (busIndex !== -1) {
-          mockBuses[busIndex].lastUpdated = new Date();
-          mockBuses[busIndex].latitude = latitude;
-          mockBuses[busIndex].longitude = longitude;
-        }
+      if (!isDbConnected) {
+        socket.emit("error", { message: "Database not connected, location update not saved" });
+        return;
       }
+      
+      // Save to database
+      const tracker = new Tracker({
+        deviceId: socket.id,
+        busNumber,
+        latitude,
+        longitude,
+        speed,
+        direction,
+      });
+      await tracker.save();
+      await Bus.findOneAndUpdate(
+        { busNumber },
+        { lastUpdated: new Date(), latitude, longitude },
+        { upsert: true }
+      );
       
       // Emit to all clients in the bus room
       io.to(busNumber).emit("busLocation", {
@@ -286,41 +256,9 @@ app.post("/api/register", async (req, res, next) => {
     console.log(`Registration attempt for user: ${userId}, email: ${email}`);
     
     if (!isDbConnected) {
-      // Store in mock data
-      const existingUser = mockUsers.find(u => u.userId === userId || u.email === email);
-      if (existingUser) {
-        console.log(`User already exists in mock data: ${userId}`);
-        return res.status(400).json({
-          status: "fail",
-          message: "User ID or Email already exists",
-        });
-      }
-      
-      const newUser = {
-        userId, 
-        name, 
-        contact, 
-        email, 
-        password,
-        ipAddress: getClientIp(req),
-        lastLogin: new Date(),
-        role: role || "user"
-      };
-      
-      mockUsers.push(newUser);
-      
-      console.log(`Successfully created mock user: ${userId}, role: ${newUser.role}`);
-      
-      return res.status(201).json({
-        status: "success",
-        data: {
-          user: {
-            userId: newUser.userId,
-            name: newUser.name,
-            email: newUser.email,
-            role: newUser.role,
-          },
-        },
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
@@ -387,42 +325,9 @@ app.post("/api/login", async (req, res, next) => {
     }
     
     if (!isDbConnected) {
-      // Check mock data - improved user search
-      const user = mockUsers.find(u => u.userId === userId);
-      
-      if (!user) {
-        console.log(`User not found in mock data: ${userId}`);
-        return res.status(401).json({
-          status: "fail",
-          message: "Incorrect user ID or password",
-        });
-      }
-      
-      if (password !== user.password) {
-        console.log(`Invalid password for user: ${userId}`);
-        return res.status(401).json({
-          status: "fail",
-          message: "Incorrect user ID or password",
-        });
-      }
-      
-      user.ipAddress = getClientIp(req);
-      user.lastLogin = new Date();
-      
-      console.log(`Mock user authenticated successfully: ${userId}, role: ${user.role}`);
-      
-      return res.status(200).json({
-        status: "success",
-        data: {
-          user: {
-            userId: user.userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            ipAddress: user.ipAddress,
-            lastLogin: user.lastLogin,
-          },
-        },
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
@@ -482,20 +387,9 @@ app.post("/api/reset-password", async (req, res, next) => {
     }
     
     if (!isDbConnected) {
-      // Update mock data
-      const userIndex = mockUsers.findIndex(u => u.userId === userId);
-      if (userIndex === -1) {
-        return res.status(404).json({
-          status: "fail",
-          message: "User not found",
-        });
-      }
-      
-      mockUsers[userIndex].password = newPassword;
-      
-      return res.status(200).json({
-        status: "success",
-        message: "Password updated successfully",
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
@@ -523,25 +417,9 @@ app.post("/api/reset-password", async (req, res, next) => {
 app.get("/api/me/:userId", async (req, res, next) => {
   try {
     if (!isDbConnected) {
-      // Get from mock data
-      const user = mockUsers.find(u => u.userId === req.params.userId);
-      if (!user) {
-        return res.status(404).json({
-          status: "fail",
-          message: "User not found",
-        });
-      }
-      
-      return res.status(200).json({
-        status: "success",
-        data: {
-          user: {
-            userId: user.userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-          },
-        },
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
@@ -575,22 +453,9 @@ app.post("/api/buses", async (req, res, next) => {
     const { busNumber, route, driverId, capacity, contactNumber } = req.body;
     
     if (!isDbConnected) {
-      // Add to mock data
-      const newBus = {
-        busNumber,
-        route,
-        driverId,
-        capacity,
-        contactNumber,
-        currentStatus: "active",
-        lastUpdated: new Date()
-      };
-      
-      mockBuses.push(newBus);
-      
-      return res.status(201).json({
-        status: "success",
-        data: { bus: newBus },
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
@@ -614,7 +479,14 @@ app.post("/api/buses", async (req, res, next) => {
 
 app.get("/api/buses", async (req, res) => {
   try {
-    const buses = isDbConnected ? await Bus.find() : mockBuses;
+    if (!isDbConnected) {
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
+      });
+    }
+    
+    const buses = await Bus.find();
     
     res.status(200).json({
       status: "success",
@@ -634,18 +506,9 @@ app.get("/api/buses/:busNumber", async (req, res) => {
     const { busNumber } = req.params;
     
     if (!isDbConnected) {
-      // Check mock data
-      const bus = mockBuses.find(b => b.busNumber === busNumber);
-      if (!bus) {
-        return res.status(404).json({
-          status: "fail",
-          message: "Bus not found",
-        });
-      }
-      
-      return res.status(200).json({
-        status: "success",
-        data: { bus },
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
@@ -694,49 +557,9 @@ app.post("/api/trackers", async (req, res, next) => {
     const directionVal = direction ? parseFloat(direction) : null;
     
     if (!isDbConnected) {
-      // Add to mock data
-      const tracker = {
-        deviceId: req.headers["device-id"] || "web",
-        busNumber,
-        latitude: latVal,
-        longitude: longVal,
-        speed: speedVal,
-        direction: directionVal,
-        timestamp: new Date()
-      };
-      
-      mockTrackers.push(tracker);
-      
-      // Update mock bus data
-      const busIndex = mockBuses.findIndex(b => b.busNumber === busNumber);
-      if (busIndex !== -1) {
-        mockBuses[busIndex].lastUpdated = new Date();
-        mockBuses[busIndex].latitude = latVal;
-        mockBuses[busIndex].longitude = longVal;
-      }
-      
-      // Emit socket event
-      io.to(busNumber).emit("busLocation", {
-        busNumber,
-        latitude: latVal,
-        longitude: longVal,
-        speed: speedVal,
-        direction: directionVal,
-        timestamp: new Date(),
-      });
-      
-      return res.status(201).json({
-        status: "success",
-        data: {
-          tracker: {
-            busNumber,
-            latitude: latVal,
-            longitude: longVal,
-            speed: speedVal,
-            direction: directionVal,
-            timestamp: new Date(),
-          },
-        },
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
@@ -793,17 +616,16 @@ app.get("/api/trackers/:busNumber", async (req, res) => {
     const { limit = 1 } = req.query;
     const limitNum = parseInt(limit);
     
-    let trackers;
-    if (isDbConnected) {
-      trackers = await Tracker.find({ busNumber })
-        .sort({ timestamp: -1 })
-        .limit(limitNum);
-    } else {
-      trackers = mockTrackers
-        .filter(t => t.busNumber === busNumber)
-        .sort((a, b) => b.timestamp - a.timestamp)
-        .slice(0, limitNum);
+    if (!isDbConnected) {
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
+      });
     }
+    
+    const trackers = await Tracker.find({ busNumber })
+      .sort({ timestamp: -1 })
+      .limit(limitNum);
     
     res.status(200).json({
       status: "success",
@@ -823,24 +645,9 @@ app.get("/api/trackers/history/:busNumber", async (req, res, next) => {
     const { startDate, endDate } = req.query;
     
     if (!isDbConnected) {
-      // Filter mock data
-      let filteredTrackers = mockTrackers.filter(t => t.busNumber === req.params.busNumber);
-      
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        filteredTrackers = filteredTrackers.filter(t => {
-          const timestamp = new Date(t.timestamp);
-          return timestamp >= start && timestamp <= end;
-        });
-      }
-      
-      filteredTrackers.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      
-      return res.status(200).json({
-        status: "success",
-        results: filteredTrackers.length,
-        data: { trackers: filteredTrackers },
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
@@ -871,58 +678,42 @@ app.get("/api/trackers/recent/:busNumber", async (req, res) => {
     const { since } = req.query;
     let sinceDate = since ? new Date(since) : new Date(Date.now() - 3600000); // Default to last hour
     
+    if (!isDbConnected) {
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
+      });
+    }
+    
     // Check memory cache first for latest update
     const lastMemoryUpdate = locationUpdates.getLastUpdate(busNumber);
     
-    if (isDbConnected) {
-      const query = { 
-        busNumber,
-        timestamp: { $gte: sinceDate }
-      };
-      
-      const trackers = await Tracker.find(query)
-        .sort({ timestamp: -1 })
-        .limit(10);
-      
-      // Merge with memory cache if more recent
-      if (lastMemoryUpdate && (!trackers.length || 
-          new Date(lastMemoryUpdate.timestamp) > new Date(trackers[0].timestamp))) {
-        res.status(200).json({
-          status: "success",
-          results: trackers.length + 1,
-          source: "hybrid",
-          data: { 
-            trackers: [lastMemoryUpdate, ...trackers].slice(0, 10)
-          },
-        });
-      } else {
-        res.status(200).json({
-          status: "success",
-          results: trackers.length,
-          source: "database",
-          data: { trackers },
-        });
-      }
-    } else {
-      // Use mock data
-      let filteredTrackers = mockTrackers
-        .filter(t => t.busNumber === busNumber && new Date(t.timestamp) >= sinceDate)
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 10);
-      
-      // Merge with memory cache if more recent
-      if (lastMemoryUpdate) {
-        if (!filteredTrackers.length || 
-            new Date(lastMemoryUpdate.timestamp) > new Date(filteredTrackers[0].timestamp)) {
-          filteredTrackers = [lastMemoryUpdate, ...filteredTrackers].slice(0, 10);
-        }
-      }
-      
+    const query = { 
+      busNumber,
+      timestamp: { $gte: sinceDate }
+    };
+    
+    const trackers = await Tracker.find(query)
+      .sort({ timestamp: -1 })
+      .limit(10);
+    
+    // Merge with memory cache if more recent
+    if (lastMemoryUpdate && (!trackers.length || 
+        new Date(lastMemoryUpdate.timestamp) > new Date(trackers[0].timestamp))) {
       res.status(200).json({
         status: "success",
-        results: filteredTrackers.length,
-        source: "cache",
-        data: { trackers: filteredTrackers },
+        results: trackers.length + 1,
+        source: "hybrid",
+        data: { 
+          trackers: [lastMemoryUpdate, ...trackers].slice(0, 10)
+        },
+      });
+    } else {
+      res.status(200).json({
+        status: "success",
+        results: trackers.length,
+        source: "database",
+        data: { trackers },
       });
     }
   } catch (err) {
@@ -934,23 +725,76 @@ app.get("/api/trackers/recent/:busNumber", async (req, res) => {
   }
 });
 
+// API Routes for Socket.io health check
+app.get("/api/socket-status", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    socketActive: true,
+    connections: Object.keys(io.sockets.sockets).length,
+    serverTime: new Date().toISOString()
+  });
+});
+
+// Add a fallback API endpoint for bus updates when socket doesn't work
+app.get("/api/bus-updates", async (req, res) => {
+  try {
+    const { since } = req.query;
+    let sinceDate = since ? new Date(since) : new Date(Date.now() - 3600000); // Default to last hour
+    
+    if (!isDbConnected) {
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
+      });
+    }
+    
+    // Get recent bus updates from database
+    const recentUpdates = await Tracker.find({
+      timestamp: { $gte: sinceDate }
+    })
+    .sort({ timestamp: -1 })
+    .limit(50);
+    
+    // Get current bus data
+    const buses = await Bus.find();
+    
+    // Prepare response
+    res.status(200).json({
+      status: "success",
+      source: "database",
+      serverTime: new Date().toISOString(),
+      data: {
+        updates: recentUpdates,
+        buses: buses
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching bus updates:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to fetch bus updates",
+    });
+  }
+});
+
 // Enhanced status endpoint with more details
 app.get("/api/status", (req, res) => {
-  // Count buses with recent locations (updated in the last hour)
-  const oneHourAgo = new Date(Date.now() - 3600000);
-  const activeBuses = mockBuses.filter(b => 
-    b.lastUpdated && new Date(b.lastUpdated) > oneHourAgo
-  ).length;
-  
-  const memoryUpdates = Object.keys(locationUpdates.getAllUpdates()).length;
+  if (!isDbConnected) {
+    return res.status(200).json({
+      status: "partial",
+      message: "API is operational but database is disconnected",
+      dbConnected: false,
+      mongoUri: MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'), // Hide credentials
+      serverTime: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  }
   
   res.status(200).json({
     status: "success",
-    message: "API is operational",
-    dbConnected: isDbConnected,
+    message: "API is fully operational",
+    dbConnected: true,
     mongoUri: MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'), // Hide credentials
-    activeBuses: activeBuses,
-    recentUpdates: memoryUpdates,
     serverTime: new Date().toISOString(),
     uptime: process.uptime()
   });
@@ -990,69 +834,6 @@ app.use((err, req, res, next) => {
     message: "Something went wrong!",
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
-});
-
-// API Routes for Socket.io health check
-app.get("/api/socket-status", (req, res) => {
-  res.status(200).json({
-    status: "success",
-    socketActive: true,
-    connections: Object.keys(io.sockets.sockets).length,
-    serverTime: new Date().toISOString()
-  });
-});
-
-// Add a fallback API endpoint for bus updates when socket doesn't work
-app.get("/api/bus-updates", async (req, res) => {
-  try {
-    const { since } = req.query;
-    let sinceDate = since ? new Date(since) : new Date(Date.now() - 3600000); // Default to last hour
-    
-    if (isDbConnected) {
-      // Get recent bus updates from database
-      const recentUpdates = await Tracker.find({
-        timestamp: { $gte: sinceDate }
-      })
-      .sort({ timestamp: -1 })
-      .limit(50);
-      
-      // Get current bus data
-      const buses = await Bus.find();
-      
-      // Prepare response
-      res.status(200).json({
-        status: "success",
-        source: "database",
-        serverTime: new Date().toISOString(),
-        data: {
-          updates: recentUpdates,
-          buses: buses
-        }
-      });
-    } else {
-      // Use mock data
-      const recentUpdates = mockTrackers
-        .filter(t => new Date(t.timestamp) >= sinceDate)
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 50);
-      
-      res.status(200).json({
-        status: "success",
-        source: "mock",
-        serverTime: new Date().toISOString(),
-        data: {
-          updates: recentUpdates,
-          buses: mockBuses
-        }
-      });
-    }
-  } catch (err) {
-    console.error("Error fetching bus updates:", err);
-    res.status(500).json({
-      status: "error",
-      message: "Failed to fetch bus updates",
-    });
-  }
 });
 
 // Start Server
