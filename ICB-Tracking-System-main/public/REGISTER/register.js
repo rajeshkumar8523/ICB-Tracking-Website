@@ -47,7 +47,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
 
     // Display loading state
     errorMessage.textContent = "Processing registration...";
-    document.getElementById("submitBtn").disabled = true;
+    document.getElementById("submitBtn").enebaled = true;
 
     try {
         // Prepare the user data
