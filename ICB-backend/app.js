@@ -242,18 +242,31 @@ app.post("/api/register", async (req, res, next) => {
   try {
     const { userId, name, contact, email, password, role } = req.body;
     
-    // Validate input
+    // Validate input with better error handling
     if (!userId || !name || !contact || !email || !password) {
+      console.log("Registration failed - missing fields:", { 
+        userId: !!userId, 
+        name: !!name, 
+        contact: !!contact, 
+        email: !!email, 
+        password: !!password 
+      });
+      
       return res.status(400).json({
         status: "fail",
         message: "Please provide all required fields: userId, name, contact, email, password",
+        receivedFields: Object.keys(req.body)
       });
     }
+    
+    // Log registration attempt for debugging
+    console.log(`Registration attempt for user: ${userId}, email: ${email}`);
     
     if (!isDbConnected) {
       // Store in mock data
       const existingUser = mockUsers.find(u => u.userId === userId || u.email === email);
       if (existingUser) {
+        console.log(`User already exists in mock data: ${userId}`);
         return res.status(400).json({
           status: "fail",
           message: "User ID or Email already exists",
@@ -273,6 +286,8 @@ app.post("/api/register", async (req, res, next) => {
       
       mockUsers.push(newUser);
       
+      console.log(`Successfully created mock user: ${userId}, role: ${newUser.role}`);
+      
       return res.status(201).json({
         status: "success",
         data: {
@@ -289,6 +304,7 @@ app.post("/api/register", async (req, res, next) => {
     // Store in database
     const existingUser = await User.findOne({ $or: [{ userId }, { email }] });
     if (existingUser) {
+      console.log(`User already exists in database: ${userId}`);
       return res.status(400).json({
         status: "fail",
         message: "User ID or Email already exists",
@@ -307,6 +323,8 @@ app.post("/api/register", async (req, res, next) => {
         role: role || "user",
       });
       
+      console.log(`Successfully created user in database: ${userId}, role: ${newUser.role}`);
+      
       res.status(201).json({
         status: "success",
         data: {
@@ -319,12 +337,14 @@ app.post("/api/register", async (req, res, next) => {
         },
       });
     } catch (dbError) {
+      console.error(`Database error during user creation: ${dbError.message}`);
       return res.status(500).json({
         status: "error",
         message: "Failed to create user in database",
       });
     }
   } catch (err) {
+    console.error(`Unexpected error in registration: ${err.message}`);
     next(err);
   }
 });
@@ -332,6 +352,9 @@ app.post("/api/register", async (req, res, next) => {
 app.post("/api/login", async (req, res, next) => {
   try {
     const { userId, password } = req.body;
+    
+    // Log login attempt for debugging
+    console.log(`Login attempt for user: ${userId}`);
     
     if (!userId || !password) {
       return res.status(400).json({
@@ -341,10 +364,19 @@ app.post("/api/login", async (req, res, next) => {
     }
     
     if (!isDbConnected) {
-      // Check mock data
+      // Check mock data - improved user search
       const user = mockUsers.find(u => u.userId === userId);
       
-      if (!user || password !== user.password) {
+      if (!user) {
+        console.log(`User not found in mock data: ${userId}`);
+        return res.status(401).json({
+          status: "fail",
+          message: "Incorrect user ID or password",
+        });
+      }
+      
+      if (password !== user.password) {
+        console.log(`Invalid password for user: ${userId}`);
         return res.status(401).json({
           status: "fail",
           message: "Incorrect user ID or password",
@@ -353,6 +385,8 @@ app.post("/api/login", async (req, res, next) => {
       
       user.ipAddress = getClientIp(req);
       user.lastLogin = new Date();
+      
+      console.log(`Mock user authenticated successfully: ${userId}, role: ${user.role}`);
       
       return res.status(200).json({
         status: "success",
@@ -372,7 +406,16 @@ app.post("/api/login", async (req, res, next) => {
     // Check database
     const user = await User.findOne({ userId });
     
-    if (!user || password !== user.password) {
+    if (!user) {
+      console.log(`User not found in database: ${userId}`);
+      return res.status(401).json({
+        status: "fail",
+        message: "Incorrect user ID or password",
+      });
+    }
+    
+    if (password !== user.password) {
+      console.log(`Invalid password for user: ${userId}`);
       return res.status(401).json({
         status: "fail",
         message: "Incorrect user ID or password",
@@ -382,6 +425,8 @@ app.post("/api/login", async (req, res, next) => {
     user.ipAddress = getClientIp(req);
     user.lastLogin = new Date();
     await user.save();
+    
+    console.log(`User authenticated successfully: ${userId}, role: ${user.role}`);
     
     res.status(200).json({
       status: "success",
@@ -397,6 +442,7 @@ app.post("/api/login", async (req, res, next) => {
       },
     });
   } catch (err) {
+    console.error(`Error in login: ${err.message}`);
     next(err);
   }
 });
