@@ -140,9 +140,7 @@ function highlight(element) {
 async function fetchAndRenderBuses() {
     try {
         const isGuestMode = !localStorage.getItem('token');
-        const apiUrl = isGuestMode ? 
-            `${window.APP_CONFIG.API_BASE_URL}${window.APP_CONFIG.ENDPOINTS.PUBLIC_BUSES}` : 
-            `${window.APP_CONFIG.API_BASE_URL}${window.APP_CONFIG.ENDPOINTS.BUSES}`;
+        const apiUrl = `${window.location.origin}/api/${isGuestMode ? 'public/' : ''}buses`;
 
         console.log('Fetching buses from:', apiUrl);
 
@@ -154,47 +152,29 @@ async function fetchAndRenderBuses() {
                 ...(isGuestMode ? {} : {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 })
-            },
-            credentials: 'include' // Include cookies if any
+            }
         });
 
-        // Log the response status and headers
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Error response:', errorText);
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const responseText = await response.text();
-            console.error('Non-JSON response:', responseText);
-            throw new Error(`Expected JSON but got ${contentType}`);
+            throw new Error(`Server returned ${response.status}`);
         }
 
         const data = await response.json();
         console.log('Received data:', data);
-        
-        if (!data || !data.data || !data.data.buses) {
-            throw new Error('Invalid response format: missing buses data');
-        }
 
         const busesContainer = document.getElementById('busContainer');
         if (!busesContainer) {
-            throw new Error('Buses container not found');
+            throw new Error('Bus container not found');
         }
 
         busesContainer.innerHTML = '';
 
-        if (data.data.buses.length === 0) {
+        if (!data || !data.buses || data.buses.length === 0) {
             busesContainer.innerHTML = '<div class="no-buses">No buses available</div>';
             return;
         }
 
-        data.data.buses.forEach(bus => {
+        data.buses.forEach(bus => {
             const busCard = document.createElement('div');
             busCard.className = 'card';
             busCard.setAttribute('data-bus-number', bus.busNumber);
@@ -223,27 +203,25 @@ async function fetchAndRenderBuses() {
 
         socket = window.APP_CONFIG.createSocketConnection();
 
-        if (socket) {
-            socket.on('connect', () => {
-                console.log('Connected to WebSocket server');
-                showUpdateNotification('Connected to real-time updates');
-            });
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket server');
+            showUpdateNotification('Connected to real-time updates');
+        });
 
-            socket.on('busLocation', (data) => {
-                console.log('Received location update:', data);
-                updateBusLocation(data);
-            });
+        socket.on('busLocation', (data) => {
+            console.log('Received location update:', data);
+            updateBusLocation(data);
+        });
 
-            socket.on('disconnect', () => {
-                console.log('Disconnected from WebSocket server');
-                showUpdateNotification('Disconnected from real-time updates');
-            });
+        socket.on('disconnect', () => {
+            console.log('Disconnected from WebSocket server');
+            showUpdateNotification('Disconnected from real-time updates');
+        });
 
-            socket.on('error', (error) => {
-                console.error('Socket error:', error);
-                showUpdateNotification('Error in real-time updates');
-            });
-        }
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            showUpdateNotification('Error in real-time updates');
+        });
 
     } catch (error) {
         console.error('Error fetching buses:', error);
