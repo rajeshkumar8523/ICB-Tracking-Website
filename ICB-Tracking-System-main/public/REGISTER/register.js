@@ -24,6 +24,10 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     const name = document.getElementById("name").value;
     const contact = document.getElementById("contact").value;
     const email = document.getElementById("email").value;
+    const dob = document.getElementById("dob").value;
+    const gender = document.getElementById("gender").value;
+    const branch = document.getElementById("branch").value;
+    const year = document.getElementById("year").value;
     const newPassword = document.getElementById("newPassword").value;
     const confirmPassword = document.getElementById("confirmPassword").value;
     const errorMessage = document.getElementById("error-message");
@@ -34,7 +38,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     successMessage.style.display = "none";
     
     // Field validation
-    if (!userId || !name || !contact || !email || !newPassword) {
+    if (!userId || !name || !contact || !email || !newPassword || !dob || !gender || !branch || !year) {
         errorMessage.textContent = "All fields are required!";
         return;
     }
@@ -57,6 +61,10 @@ document.getElementById('registerForm').addEventListener('submit', async functio
             name: name.trim(),
             contact: contact.trim(),
             email: email.trim(),
+            dob: dob,
+            gender: gender,
+            branch: branch,
+            year: year,
             password: newPassword,
             role: "user"
         };
