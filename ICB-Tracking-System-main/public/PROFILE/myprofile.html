@@ -46,10 +46,26 @@
                     <option value="" selected disabled>Select Gender</option>
                     <option value="male">Male</option>
                     <option value="female">Female</option>
+                    <option value="other">Other</option>
                 </select>
             </div>
             <div class="field">
-                <input type="text" id="branchYear" placeholder="Enter Branch/Year" disabled>
+                <select id="branch" disabled>
+                    <option value="" selected disabled>Select Branch</option>
+                    <option value="CSE">Computer Science</option>
+                    <option value="ECE">Electronics</option>
+                    <option value="MECH">Mechanical</option>
+                    <option value="CIVIL">Civil</option>
+                </select>
+            </div>
+            <div class="field">
+                <select id="year" disabled>
+                    <option value="" selected disabled>Select Year</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                </select>
             </div>
             <button id="editButton" class="edit-button">Edit Profile</button>
             <button id="saveButton" class="save-button" style="display: none;">Save Changes</button>
