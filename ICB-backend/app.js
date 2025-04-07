@@ -150,12 +150,12 @@ const busSchema = new mongoose.Schema({
   busNumber: { type: String, required: true, unique: true },
   driverId: { type: String, required: true },
   route: { type: String, required: true },
-  currentStatus: { type: String, enum: ["active", "inactive", "maintenance"], default: "active" },
-  capacity: { type: Number, default: 40 },
-  contactNumber: { type: String },
-  lastUpdated: { type: Date },
+  currentStatus: { type: String, required: true, default: 'active' },
+  capacity: { type: Number, required: true },
+  contactNumber: { type: String, required: true },
+  lastUpdated: { type: Date, default: Date.now },
   latitude: { type: Number },
-  longitude: { type: Number },
+  longitude: { type: Number }
 });
 
 const trackerSchema = new mongoose.Schema({
@@ -882,31 +882,42 @@ app.use((err, req, res, next) => {
 // Add public routes for guest mode access
 app.get("/api/public/buses", async (req, res) => {
   try {
-    if (!isDbConnected) {
-      return res.status(503).json({
-        status: "error",
-        message: "Database connection unavailable. Please try again later."
+    if (!mongoose.connection.readyState) {
+      return res.status(503).json({ 
+        status: 'error',
+        message: 'Database connection not available'
       });
     }
-    
-    const buses = await Bus.find().select('busNumber route currentStatus contactNumber');
-    
-    res.status(200).json({
-      status: "success",
+
+    const buses = await Bus.find({}, {
+      busNumber: 1,
+      route: 1,
+      currentStatus: 1,
+      contactNumber: 1,
+      latitude: 1,
+      longitude: 1,
+      lastUpdated: 1
+    });
+
+    res.json({
+      status: 'success',
       data: {
         buses: buses.map(bus => ({
           busNumber: bus.busNumber,
           route: bus.route,
           currentStatus: bus.currentStatus,
-          contactNumber: bus.contactNumber
+          contactNumber: bus.contactNumber,
+          latitude: bus.latitude,
+          longitude: bus.longitude,
+          lastUpdated: bus.lastUpdated
         }))
       }
     });
-  } catch (err) {
-    console.error("Error fetching public buses:", err);
+  } catch (error) {
+    console.error('Error fetching buses:', error);
     res.status(500).json({
-      status: "error",
-      message: "Failed to fetch buses"
+      status: 'error',
+      message: 'Failed to fetch bus data'
     });
   }
 });
@@ -916,20 +927,44 @@ async function initializeDefaultBuses() {
     try {
         const defaultBuses = [
             {
-                busNumber: "01",
-                driverId: "01",
-                route: "COLLEGE TO KOMPALLY",
+                busNumber: "BUS001",
+                driverId: "DRIVER001",
+                route: "College to Kompally",
                 currentStatus: "active",
                 capacity: 40,
-                contactNumber: "+917981321536"
+                contactNumber: "9876543210",
+                latitude: 16.698612,
+                longitude: 77.941211
             },
             {
-                busNumber: "02",
-                driverId: "02",
-                route: "COLLEGE TO MEDCHAL",
+                busNumber: "BUS002",
+                driverId: "DRIVER002",
+                route: "College to Patancheru",
                 currentStatus: "active",
                 capacity: 40,
-                contactNumber: "+917981321537"
+                contactNumber: "9876543210",
+                latitude: 17.5287,
+                longitude: 78.2667
+            },
+            {
+                busNumber: "BUS003",
+                driverId: "DRIVER003",
+                route: "College to Maissamaguda",
+                currentStatus: "active",
+                capacity: 40,
+                contactNumber: "9876543210",
+                latitude: 17.52,
+                longitude: 78.41
+            },
+            {
+                busNumber: "BUS004",
+                driverId: "DRIVER004",
+                route: "College to Medchal",
+                currentStatus: "active",
+                capacity: 40,
+                contactNumber: "9876543210",
+                latitude: 17.388,
+                longitude: 78.4783
             }
         ];
 
@@ -937,11 +972,11 @@ async function initializeDefaultBuses() {
             const existingBus = await Bus.findOne({ busNumber: bus.busNumber });
             if (!existingBus) {
                 await Bus.create(bus);
-                console.log(`Created default bus ${bus.busNumber}`);
+                console.log(`Created default bus: ${bus.busNumber}`);
             }
         }
     } catch (error) {
-        console.error("Error initializing default buses:", error);
+        console.error('Error initializing default buses:', error);
     }
 }
 
