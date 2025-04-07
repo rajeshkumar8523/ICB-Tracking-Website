@@ -139,77 +139,112 @@ function highlight(element) {
 // Function to fetch and render buses
 async function fetchAndRenderBuses() {
     try {
-        const container = document.getElementById('busContainer');
-        if (!container) {
-            console.error('Bus container element not found');
-            return;
-        }
-        
-        container.innerHTML = '<div class="loading">Loading buses...</div>';
-        
-        const isGuestMode = localStorage.getItem('guestMode') === 'true';
-        const apiEndpoint = isGuestMode ? 
-            `${API_BASE_URL}/api/public/buses` : 
-            `${API_BASE_URL}/api/buses`;
-        
-        console.log("Fetching buses from:", apiEndpoint);
-        
-        const response = await fetch(apiEndpoint, {
+        const isGuestMode = !localStorage.getItem('token');
+        const apiUrl = isGuestMode ? 
+            'https://icb-tracking-website.vercel.app/api/public/buses' : 
+            'https://icb-tracking-website.vercel.app/api/buses';
+
+        const response = await fetch(apiUrl, {
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                ...(isGuestMode ? {} : {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                })
             }
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
-        const result = await response.json();
-        const buses = result.data?.buses || [];
-        
-        container.innerHTML = '';
-        
-        if (buses.length) {
-            buses.forEach(bus => {
-                const statusClass = bus.currentStatus === 'active' ? 'status-green' : 'status-red';
-                const routeDisplay = bus.route.split('TO')[1]?.trim() || bus.route;
-                
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.setAttribute('data-bus-number', bus.busNumber);
-                card.innerHTML = `
-                    <div class="status-bar ${statusClass}"></div>
-                    <div class="bus-number">BUS NO-${bus.busNumber}</div>
-                    <div class="route">
-                        COLLEGE <br> <SMALL>TO</SMALL><br> ${routeDisplay}
-                    </div>
-                    <div class="icons">
-                        <a href="tel:${bus.contactNumber || '+1234567890'}">
-                            <i class="fas fa-phone"></i>
-                        </a>
-                        <a href="../LOCATION/location.html?bus=${bus.busNumber}" class="location-link">
-                            <i class="fas fa-map-marker-alt"></i>
-                        </a>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-            
-            showUpdateNotification('Buses loaded successfully');
-        } else {
-            container.innerHTML = '<div class="no-buses">No buses available</div>';
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Response was not JSON');
         }
+
+        const data = await response.json();
+        
+        if (data.status !== 'success' || !data.data || !data.data.buses) {
+            throw new Error('Invalid response format');
+        }
+
+        const busesContainer = document.getElementById('busesContainer');
+        if (!busesContainer) {
+            throw new Error('Buses container not found');
+        }
+
+        busesContainer.innerHTML = '';
+
+        data.data.buses.forEach(bus => {
+            const busCard = document.createElement('div');
+            busCard.className = 'bus-card';
+            busCard.innerHTML = `
+                <div class="bus-header">
+                    <h3>${bus.busNumber}</h3>
+                    <span class="status ${bus.currentStatus}">${bus.currentStatus}</span>
+                </div>
+                <div class="bus-details">
+                    <p><strong>Route:</strong> ${bus.route}</p>
+                    <p><strong>Contact:</strong> ${bus.contactNumber}</p>
+                    ${bus.latitude && bus.longitude ? `
+                        <p><strong>Location:</strong> ${bus.latitude.toFixed(6)}, ${bus.longitude.toFixed(6)}</p>
+                    ` : ''}
+                    ${bus.lastUpdated ? `
+                        <p><strong>Last Updated:</strong> ${new Date(bus.lastUpdated).toLocaleString()}</p>
+                    ` : ''}
+                </div>
+            `;
+            busesContainer.appendChild(busCard);
+        });
+
+        // Update socket connection for real-time updates
+        if (socket) {
+            socket.disconnect();
+        }
+
+        socket = io('https://icb-tracking-website.vercel.app', {
+            transports: ['websocket'],
+            auth: isGuestMode ? {} : {
+                token: localStorage.getItem('token')
+            }
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket server');
+            showUpdateNotification('Connected to real-time updates');
+        });
+
+        socket.on('busLocation', (data) => {
+            const busCard = document.querySelector(`.bus-card h3:contains('${data.busNumber}')`)?.closest('.bus-card');
+            if (busCard) {
+                const locationElement = busCard.querySelector('.bus-details p:last-child');
+                if (locationElement) {
+                    locationElement.innerHTML = `
+                        <strong>Location:</strong> ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}
+                        <br>
+                        <strong>Last Updated:</strong> ${new Date().toLocaleString()}
+                    `;
+                }
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from WebSocket server');
+            showUpdateNotification('Disconnected from real-time updates');
+        });
+
     } catch (error) {
         console.error('Error fetching buses:', error);
-        const container = document.getElementById('busContainer');
-        if (container) {
-            container.innerHTML = `
-                <div class="error">Failed to load bus data. Please try again later.</div>
-                <button onclick="fetchAndRenderBuses()" class="retry-button">Retry</button>
+        const busesContainer = document.getElementById('busesContainer');
+        if (busesContainer) {
+            busesContainer.innerHTML = `
+                <div class="error-message">
+                    <p>Failed to load bus data. Please try again later.</p>
+                    <button onclick="fetchAndRenderBuses()">Retry</button>
+                </div>
             `;
         }
-        showUpdateNotification('Error updating');
     }
 }
 
