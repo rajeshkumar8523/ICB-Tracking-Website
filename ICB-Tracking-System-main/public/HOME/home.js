@@ -66,10 +66,8 @@ function initializeSocket() {
         
         // Listen for real-time bus location updates
         socket.on('busLocation', (data) => {
-            showUpdateNotification(`Bus ${data.busNumber} location updated just now`);
-            console.log('Received location update for bus:', data.busNumber);
-            // Refresh bus list when we get an update
-            fetchAndRenderBuses();
+            console.log('Received location update:', data);
+            updateBusLocation(data);
         });
         
         socket.on('connect_error', (error) => {
@@ -99,6 +97,16 @@ function initializeSocket() {
     } catch (e) {
         console.error('Failed to initialize socket:', e);
         socketConnected = false;
+    }
+}
+
+// Function to update bus location
+function updateBusLocation(data) {
+    const busCard = document.querySelector(`.card[data-bus-number="${data.busNumber}"]`);
+    if (busCard) {
+        const statusBar = busCard.querySelector('.status-bar');
+        statusBar.className = `status-bar ${data.currentStatus === 'active' ? 'status-green' : 'status-red'}`;
+        showUpdateNotification(`Bus ${data.busNumber} location updated`);
     }
 }
 
@@ -140,108 +148,39 @@ async function fetchAndRenderBuses() {
         container.innerHTML = '<div class="loading">Loading buses...</div>';
         
         const isGuestMode = localStorage.getItem('guestMode') === 'true';
-        console.log("Guest mode:", isGuestMode);
+        const apiEndpoint = isGuestMode ? 
+            `${API_BASE_URL}/api/public/buses` : 
+            `${API_BASE_URL}/api/buses`;
         
-        let buses = [];
-        let apiEndpoint = `${API_BASE_URL}/api/buses`;
+        console.log("Fetching buses from:", apiEndpoint);
         
-        if (isGuestMode) {
-            apiEndpoint = `${API_BASE_URL}/api/public/buses`;
+        const response = await fetch(apiEndpoint, {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        try {
-            console.log("Fetching buses from:", apiEndpoint);
-            
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            
-            const response = await fetch(apiEndpoint, {
-                signal: controller.signal,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Response was not JSON');
-            }
-            
-            const result = await response.json();
-            buses = result.data?.buses || [];
-            
-            if (!socketConnected && !isGuestMode) {
-                try {
-                    const lastUpdateTime = localStorage.getItem('lastUpdateTime') || 
-                        new Date(Date.now() - 5 * 60 * 1000).toISOString();
-                    
-                    const updatesResponse = await fetch(
-                        `${API_BASE_URL}/api/bus-updates?since=${encodeURIComponent(lastUpdateTime)}`,
-                        {
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json'
-                            }
-                        }
-                    );
-                    
-                    if (updatesResponse.ok) {
-                        const updatesData = await updatesResponse.json();
-                        if (updatesData.data?.updates?.length > 0) {
-                            buses = buses.map(bus => {
-                                const latestUpdate = updatesData.data.updates.find(u => u.busNumber === bus.busNumber);
-                                if (latestUpdate) {
-                                    return {
-                                        ...bus,
-                                        latitude: latestUpdate.latitude,
-                                        longitude: latestUpdate.longitude,
-                                        lastUpdated: latestUpdate.timestamp
-                                    };
-                                }
-                                return bus;
-                            });
-                            showUpdateNotification(`Updates received at: ${new Date().toLocaleTimeString()}`);
-                        }
-                    }
-                } catch (updateError) {
-                    console.warn("Failed to get updates via API:", updateError);
-                }
-            }
-        } catch (apiError) {
-            console.error('API error:', apiError);
-            throw new Error('Failed to fetch bus data from server');
-        }
-
+        const result = await response.json();
+        const buses = result.data?.buses || [];
+        
         container.innerHTML = '';
-
+        
         if (buses.length) {
             buses.forEach(bus => {
-                const statusClass = bus.currentStatus === 'active' ? 'status-green' : 
-                                   bus.currentStatus === 'inactive' ? 'status-red' : 'status-yellow';
-                
-                let routeDisplay = bus.route;
-                if (bus.route.includes("COLLEGE TO")) {
-                    routeDisplay = bus.route.split("COLLEGE TO")[1].trim();
-                } else if (bus.route.includes("College to")) {
-                    routeDisplay = bus.route.split("College to")[1].trim();
-                } else if (bus.route.includes("TO")) {
-                    routeDisplay = bus.route.split("TO")[1].trim();
-                } else if (bus.route.includes("to")) {
-                    routeDisplay = bus.route.split("to")[1].trim();
-                }
+                const statusClass = bus.currentStatus === 'active' ? 'status-green' : 'status-red';
+                const routeDisplay = bus.route.split('TO')[1]?.trim() || bus.route;
                 
                 const card = document.createElement('div');
                 card.className = 'card';
+                card.setAttribute('data-bus-number', bus.busNumber);
                 card.innerHTML = `
                     <div class="status-bar ${statusClass}"></div>
-                    <div class="bus-number">BUS NO-${bus.busNumber}</div> 
+                    <div class="bus-number">BUS NO-${bus.busNumber}</div>
                     <div class="route">
                         COLLEGE <br> <SMALL>TO</SMALL><br> ${routeDisplay}
                     </div>
@@ -256,9 +195,8 @@ async function fetchAndRenderBuses() {
                 `;
                 container.appendChild(card);
             });
-
-            const updateType = socketConnected ? 'Live update' : 'Last update';
-            showUpdateNotification(`${updateType}: ${new Date().toLocaleTimeString()}`);
+            
+            showUpdateNotification('Buses loaded successfully');
         } else {
             container.innerHTML = '<div class="no-buses">No buses available</div>';
         }
