@@ -786,7 +786,7 @@ app.get("/api/socket-status", (req, res) => {
 app.get("/api/bus-updates", async (req, res) => {
   try {
     const { since } = req.query;
-    let sinceDate = since ? new Date(since) : new Date(Date.now() - 3600000); // Default to last hour
+    let sinceDate = since ? new Date(since) : new Date(Date.now() - 3600000);
     
     if (!isDbConnected) {
       return res.status(503).json({
@@ -795,21 +795,16 @@ app.get("/api/bus-updates", async (req, res) => {
       });
     }
     
-    // Get recent bus updates from database
     const recentUpdates = await Tracker.find({
       timestamp: { $gte: sinceDate }
     })
     .sort({ timestamp: -1 })
     .limit(50);
     
-    // Get current bus data
     const buses = await Bus.find();
     
-    // Prepare response
     res.status(200).json({
       status: "success",
-      source: "database",
-      serverTime: new Date().toISOString(),
       data: {
         updates: recentUpdates,
         buses: buses
@@ -819,7 +814,7 @@ app.get("/api/bus-updates", async (req, res) => {
     console.error("Error fetching bus updates:", err);
     res.status(500).json({
       status: "error",
-      message: "Failed to fetch bus updates",
+      message: "Failed to fetch bus updates"
     });
   }
 });
@@ -886,29 +881,25 @@ app.use((err, req, res, next) => {
 // Add public routes for guest mode access
 app.get("/api/public/buses", async (req, res) => {
   try {
-    // This endpoint is always accessible, even in guest mode
     if (!isDbConnected) {
-      // Return sample data for guest mode
-      return res.status(200).json({
-        status: "success",
-        results: 3,
-        data: { 
-          buses: [
-            { busNumber: "01", route: "COLLEGE TO JADCHERLA", currentStatus: "active", contactNumber: "+917981321536" },
-            { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "active", contactNumber: "+917981321537" },
-            { busNumber: "03", route: "COLLEGE TO METTUGADA", currentStatus: "inactive", contactNumber: "+917981321538" }
-          ]
-        }
+      return res.status(503).json({
+        status: "error",
+        message: "Database connection unavailable. Please try again later."
       });
     }
     
-    // Get data from database
-    const buses = await Bus.find();
+    const buses = await Bus.find().select('busNumber route currentStatus contactNumber');
     
     res.status(200).json({
       status: "success",
-      results: buses.length,
-      data: { buses }
+      data: {
+        buses: buses.map(bus => ({
+          busNumber: bus.busNumber,
+          route: bus.route,
+          currentStatus: bus.currentStatus,
+          contactNumber: bus.contactNumber
+        }))
+      }
     });
   } catch (err) {
     console.error("Error fetching public buses:", err);
