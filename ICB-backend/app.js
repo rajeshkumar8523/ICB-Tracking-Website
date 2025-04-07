@@ -66,9 +66,10 @@ const connectWithRetry = () => {
 connectWithRetry();
 
 // Set up MongoDB connection listeners
-mongoose.connection.on('connected', () => {
+mongoose.connection.on('connected', async () => {
   console.log('MongoDB connection established');
   isDbConnected = true;
+  await initializeDefaultBuses();
 });
 
 mongoose.connection.on('disconnected', () => {
@@ -909,6 +910,40 @@ app.get("/api/public/buses", async (req, res) => {
     });
   }
 });
+
+// Initialize default buses if they don't exist
+async function initializeDefaultBuses() {
+    try {
+        const defaultBuses = [
+            {
+                busNumber: "01",
+                driverId: "01",
+                route: "COLLEGE TO KOMPALLY",
+                currentStatus: "active",
+                capacity: 40,
+                contactNumber: "+917981321536"
+            },
+            {
+                busNumber: "02",
+                driverId: "02",
+                route: "COLLEGE TO MEDCHAL",
+                currentStatus: "active",
+                capacity: 40,
+                contactNumber: "+917981321537"
+            }
+        ];
+
+        for (const bus of defaultBuses) {
+            const existingBus = await Bus.findOne({ busNumber: bus.busNumber });
+            if (!existingBus) {
+                await Bus.create(bus);
+                console.log(`Created default bus ${bus.busNumber}`);
+            }
+        }
+    } catch (error) {
+        console.error("Error initializing default buses:", error);
+    }
+}
 
 // Start Server
 const PORT = process.env.PORT || 5000;
