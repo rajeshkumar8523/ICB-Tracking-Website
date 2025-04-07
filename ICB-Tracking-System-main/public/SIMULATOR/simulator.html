@@ -3,137 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    <title>ICB Bus Location Simulator</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-          integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
-          crossorigin="anonymous" />
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
-          crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
-    <!-- Custom CSS -->
+    <title>Location Simulator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
     <link rel="stylesheet" href="simulator.css">
-    
-    <!-- Fallback config in case config.js fails to load -->
-    <script>
-        window.appConfig = window.appConfig || {
-            API_URL: 'https://icb-backend.vercel.app',
-            MAP_DEFAULT_LAT: -33.8688,
-            MAP_DEFAULT_LNG: 151.2093,
-            MAP_DEFAULT_ZOOM: 13
-        };
-    </script>
 </head>
 <body>
     <!-- Header -->
-    <header>
-        <div class="logo">
-            <img src="../images/logo.png" alt="ICB Logo">
-            <h1>Bus Location Simulator</h1>
-        </div>
-        <div id="connection-status" class="connection-status status-disconnected">
-            <i class="fas fa-plug-circle-exclamation"></i>
-            Disconnected
-        </div>
-    </header>
+    <div class="header">
+        <a href="../TOOLS/tools.html"><span class="back-arrow">←</span> Location Simulator</a>
+    </div>
 
-    <!-- Main Content -->
     <div class="container">
-        <!-- Form Card -->
-        <div id="location-form-card" class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-bus"></i> Bus Location Update</h2>
-            </div>
-            <div class="card-body">
-                <form id="location-form">
+        <div class="simulator-container">
+            <div class="form-section">
+                <h2>Update Bus Location</h2>
+                <form id="locationForm">
                     <div class="form-group">
-                        <label for="busId">Select Bus ID:</label>
-                        <select id="busId" name="busId" required>
-                            <option value="" disabled selected>Select a bus ID</option>
+                        <label for="busSelect">Select Bus:</label>
+                        <select id="busSelect" required>
+                            <option value="">Select a bus</option>
+                            <!-- Bus options will be populated dynamically -->
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label for="predefined-location">Select Predefined Location:</label>
-                        <select id="predefined-location" name="predefined-location">
-                            <option value="" disabled selected>Select a location</option>
-                        </select>
+                        <label for="latitude">Latitude:</label>
+                        <input type="number" id="latitude" step="0.000001" required placeholder="e.g. 17.3850">
                     </div>
                     
-                    <div class="coordinates-container">
-                        <div class="form-group">
-                            <label for="latitude">Latitude:</label>
-                            <input type="number" id="latitude" name="latitude" step="0.000001" placeholder="Enter latitude" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="longitude">Longitude:</label>
-                            <input type="number" id="longitude" name="longitude" step="0.000001" placeholder="Enter longitude" required>
-                        </div>
+                    <div class="form-group">
+                        <label for="longitude">Longitude:</label>
+                        <input type="number" id="longitude" step="0.000001" required placeholder="e.g. 78.4867">
                     </div>
                     
-                    <div class="button-container">
-                        <button type="button" id="open-map" class="secondary-btn">
-                            <i class="fas fa-map-location-dot"></i> Select on Map
-                        </button>
-                        <button type="submit" id="update-location" class="primary-btn">
-                            <i class="fas fa-location-arrow"></i> Update Location
-                        </button>
+                    <div class="form-group">
+                        <label for="speed">Speed (km/h):</label>
+                        <input type="number" id="speed" min="0" max="120" placeholder="Optional">
                     </div>
                     
-                    <div id="result-container" style="display: none;" class="result-message info"></div>
+                    <div class="form-group">
+                        <label for="direction">Direction (degrees):</label>
+                        <input type="number" id="direction" min="0" max="359" placeholder="Optional">
+                    </div>
+                    
+                    <div class="button-group">
+                        <button type="submit" class="primary-btn">Update Location</button>
+                        <button type="button" id="useMapBtn" class="secondary-btn">Use Map</button>
+                    </div>
                 </form>
+                
+                <div class="result-message" id="resultMessage"></div>
             </div>
-        </div>
-        
-        <!-- Map Section (Hidden by default) -->
-        <div id="map-section" class="card map-section">
-            <div class="card-header">
-                <h2><i class="fas fa-map-marker-alt"></i> Select Location on Map</h2>
-            </div>
-            <div class="card-body">
+            
+            <div class="map-section" id="mapSection">
+                <h2>Click on Map to Set Location</h2>
                 <div id="map"></div>
-                <div id="coordinates-display" class="coordinates-display">
-                    Click on the map to select a location
-                </div>
-                <div class="button-container">
-                    <button id="cancel-location" class="secondary-btn">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                    <button id="confirm-location" class="primary-btn">
-                        <i class="fas fa-check"></i> Confirm Location
-                    </button>
+                <div class="button-group">
+                    <button type="button" id="confirmLocationBtn" class="primary-btn">Confirm Location</button>
+                    <button type="button" id="cancelMapBtn" class="secondary-btn">Cancel</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer>
-        <div class="footer-content">
-            <p>&copy; 2023 ICB Bus Tracking System</p>
-            <a href="../index.html" class="back-link">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
-        </div>
-    </footer>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
-            integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
-            crossorigin="anonymous"></script>
-    
-    <!-- Socket.io -->
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"
-            integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+"
-            crossorigin="anonymous"></script>
-    
-    <!-- Custom JS -->
+    <script src="../config.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="../config.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="../config.js"></script>
     <script src="simulator.js"></script>
 </body>
 </html> 

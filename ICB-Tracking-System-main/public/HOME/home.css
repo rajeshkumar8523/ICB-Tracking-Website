@@ -432,22 +432,3 @@ h1 {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-
-/* Add styles for guest mode indicator */
-.guest-indicator {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: rgba(255, 152, 0, 0.8);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.guest-indicator i {
-    font-size: 14px;
-}
