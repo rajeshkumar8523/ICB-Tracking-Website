@@ -105,7 +105,9 @@ function updateBusLocation(data) {
     const busCard = document.querySelector(`.card[data-bus-number="${data.busNumber}"]`);
     if (busCard) {
         const statusBar = busCard.querySelector('.status-bar');
-        statusBar.className = `status-bar ${data.currentStatus === 'active' ? 'status-green' : 'status-red'}`;
+        if (statusBar) {
+            statusBar.className = `status-bar ${data.currentStatus === 'active' ? 'status-green' : 'status-red'}`;
+        }
         showUpdateNotification(`Bus ${data.busNumber} location updated`);
     }
 }
@@ -140,7 +142,9 @@ function highlight(element) {
 async function fetchAndRenderBuses() {
     try {
         const isGuestMode = !localStorage.getItem('token');
-        const apiUrl = `${window.location.origin}/api/${isGuestMode ? 'public/' : ''}buses`;
+        const apiUrl = isGuestMode ? 
+            `${window.location.origin}/api/public/buses` : 
+            `${window.location.origin}/api/buses`;
 
         console.log('Fetching buses from:', apiUrl);
 
@@ -169,12 +173,12 @@ async function fetchAndRenderBuses() {
 
         busesContainer.innerHTML = '';
 
-        if (!data || !data.buses || data.buses.length === 0) {
+        if (!data || !data.data || !data.data.buses || data.data.buses.length === 0) {
             busesContainer.innerHTML = '<div class="no-buses">No buses available</div>';
             return;
         }
 
-        data.buses.forEach(bus => {
+        data.data.buses.forEach(bus => {
             const busCard = document.createElement('div');
             busCard.className = 'card';
             busCard.setAttribute('data-bus-number', bus.busNumber);
@@ -201,7 +205,11 @@ async function fetchAndRenderBuses() {
             socket.disconnect();
         }
 
-        socket = window.APP_CONFIG.createSocketConnection();
+        socket = io(window.location.origin, {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionDelay: 1000
+        });
 
         socket.on('connect', () => {
             console.log('Connected to WebSocket server');
