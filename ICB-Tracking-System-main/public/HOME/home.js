@@ -137,9 +137,8 @@ async function fetchAndRenderBuses() {
             return;
         }
         
-        container.innerHTML = '<div class="loading">Loading buses...</div>'; // Show loading
+        container.innerHTML = '<div class="loading">Loading buses...</div>';
         
-        // Check if we're in guest mode
         const isGuestMode = localStorage.getItem('guestMode') === 'true';
         console.log("Guest mode:", isGuestMode);
         
@@ -147,59 +146,58 @@ async function fetchAndRenderBuses() {
         let apiEndpoint = `${API_BASE_URL}/api/buses`;
         
         if (isGuestMode) {
-            // Use the public API endpoint for guest mode
             apiEndpoint = `${API_BASE_URL}/api/public/buses`;
         }
         
-        // Fetch bus data from API with timeout
         try {
             console.log("Fetching buses from:", apiEndpoint);
             
-            // Create AbortController for timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             
             const response = await fetch(apiEndpoint, {
-                signal: controller.signal
+                signal: controller.signal,
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
             });
             
-            clearTimeout(timeoutId); // Clear timeout
+            clearTimeout(timeoutId);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Response was not JSON');
+            }
+            
             const result = await response.json();
             buses = result.data?.buses || [];
             
-            // If socket is not connected and not in guest mode, check for recent updates
             if (!socketConnected && !isGuestMode) {
-                console.log("Socket not connected, checking for bus updates via API");
                 try {
-                    // Get the last update time or default to 5 minutes ago
                     const lastUpdateTime = localStorage.getItem('lastUpdateTime') || 
                         new Date(Date.now() - 5 * 60 * 1000).toISOString();
                     
                     const updatesResponse = await fetch(
-                        `${API_BASE_URL}/api/bus-updates?since=${encodeURIComponent(lastUpdateTime)}`, 
-                        { signal: controller.signal }
+                        `${API_BASE_URL}/api/bus-updates?since=${encodeURIComponent(lastUpdateTime)}`,
+                        {
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            }
+                        }
                     );
                     
                     if (updatesResponse.ok) {
                         const updatesData = await updatesResponse.json();
-                        console.log("Received updates via API:", updatesData);
-                        
-                        // Store the current time as last update time
-                        localStorage.setItem('lastUpdateTime', new Date().toISOString());
-                        
-                        // If we got updates, update the buses data
-                        if (updatesData.data && updatesData.data.updates && updatesData.data.updates.length > 0) {
-                            // Update bus locations if needed
+                        if (updatesData.data?.updates?.length > 0) {
                             buses = buses.map(bus => {
-                                // Find the latest update for this bus
                                 const latestUpdate = updatesData.data.updates.find(u => u.busNumber === bus.busNumber);
                                 if (latestUpdate) {
-                                    // Update bus with latest location
                                     return {
                                         ...bus,
                                         latitude: latestUpdate.latitude,
@@ -209,7 +207,6 @@ async function fetchAndRenderBuses() {
                                 }
                                 return bus;
                             });
-                            
                             showUpdateNotification(`Updates received at: ${new Date().toLocaleTimeString()}`);
                         }
                     }
@@ -219,29 +216,17 @@ async function fetchAndRenderBuses() {
             }
         } catch (apiError) {
             console.error('API error:', apiError);
-            if (apiError.name === 'AbortError') {
-                // Handle timeout specifically
-                console.log('Request timed out, using fallback data');
-                buses = [
-                    { busNumber: "01", route: "COLLEGE TO JADCHERLA", currentStatus: "unknown", contactNumber: "+917981321536" },
-                    { busNumber: "02", route: "COLLEGE TO KOTHAKOTA", currentStatus: "unknown", contactNumber: "+917981321537" }
-                ];
-            } else {
-                throw apiError;
-            }
+            throw new Error('Failed to fetch bus data from server');
         }
 
-        container.innerHTML = ''; // Clear loading message
+        container.innerHTML = '';
 
         if (buses.length) {
             buses.forEach(bus => {
-                // Determine status class
                 const statusClass = bus.currentStatus === 'active' ? 'status-green' : 
                                    bus.currentStatus === 'inactive' ? 'status-red' : 'status-yellow';
                 
-                // Format the route
                 let routeDisplay = bus.route;
-                // Check if the route contains "COLLEGE TO" or similar format
                 if (bus.route.includes("COLLEGE TO")) {
                     routeDisplay = bus.route.split("COLLEGE TO")[1].trim();
                 } else if (bus.route.includes("College to")) {
@@ -252,7 +237,6 @@ async function fetchAndRenderBuses() {
                     routeDisplay = bus.route.split("to")[1].trim();
                 }
                 
-                // Create bus card
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
@@ -273,11 +257,9 @@ async function fetchAndRenderBuses() {
                 container.appendChild(card);
             });
 
-            // Show update notification
             const updateType = socketConnected ? 'Live update' : 'Last update';
             showUpdateNotification(`${updateType}: ${new Date().toLocaleTimeString()}`);
         } else {
-            // Handle empty bus list
             container.innerHTML = '<div class="no-buses">No buses available</div>';
         }
     } catch (error) {
