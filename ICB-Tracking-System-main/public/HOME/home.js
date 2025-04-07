@@ -305,14 +305,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAndRenderBuses();
     
     // Set up refresh intervals
-    // More frequent polling if socket is not connected
     setInterval(() => {
         if (!socketConnected && !isGuestMode) {
-            console.log("Socket not connected, using HTTP polling instead");
             fetchAndRenderBuses();
         }
     }, 30000); // Poll every 30 seconds if socket is down
     
-    // Less frequent background refresh regardless of socket status
     setInterval(fetchAndRenderBuses, 120000); // Every 2 minutes
 });
