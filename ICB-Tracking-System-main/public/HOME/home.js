@@ -141,10 +141,13 @@ async function fetchAndRenderBuses() {
     try {
         const isGuestMode = !localStorage.getItem('token');
         const apiUrl = isGuestMode ? 
-            'https://icb-tracking-website.vercel.app/api/public/buses' : 
-            'https://icb-tracking-website.vercel.app/api/buses';
+            `${window.APP_CONFIG.API_BASE_URL}/api/public/buses` : 
+            `${window.APP_CONFIG.API_BASE_URL}/api/buses`;
+
+        console.log('Fetching buses from:', apiUrl);
 
         const response = await fetch(apiUrl, {
+            method: 'GET',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
@@ -160,13 +163,15 @@ async function fetchAndRenderBuses() {
 
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
+            console.error('Response content type:', contentType);
             throw new Error('Response was not JSON');
         }
 
         const data = await response.json();
+        console.log('Received data:', data);
         
-        if (data.status !== 'success' || !data.data || !data.data.buses) {
-            throw new Error('Invalid response format');
+        if (!data || !data.data || !data.data.buses) {
+            throw new Error('Invalid response format: missing buses data');
         }
 
         const busesContainer = document.getElementById('busesContainer');
@@ -175,6 +180,11 @@ async function fetchAndRenderBuses() {
         }
 
         busesContainer.innerHTML = '';
+
+        if (data.data.buses.length === 0) {
+            busesContainer.innerHTML = '<div class="no-buses">No buses available</div>';
+            return;
+        }
 
         data.data.buses.forEach(bus => {
             const busCard = document.createElement('div');
@@ -203,7 +213,7 @@ async function fetchAndRenderBuses() {
             socket.disconnect();
         }
 
-        socket = io('https://icb-tracking-website.vercel.app', {
+        socket = io(window.APP_CONFIG.SOCKET_URL, {
             transports: ['websocket'],
             auth: isGuestMode ? {} : {
                 token: localStorage.getItem('token')
@@ -216,6 +226,7 @@ async function fetchAndRenderBuses() {
         });
 
         socket.on('busLocation', (data) => {
+            console.log('Received location update:', data);
             const busCard = document.querySelector(`.bus-card h3:contains('${data.busNumber}')`)?.closest('.bus-card');
             if (busCard) {
                 const locationElement = busCard.querySelector('.bus-details p:last-child');
@@ -234,13 +245,18 @@ async function fetchAndRenderBuses() {
             showUpdateNotification('Disconnected from real-time updates');
         });
 
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            showUpdateNotification('Error in real-time updates');
+        });
+
     } catch (error) {
         console.error('Error fetching buses:', error);
         const busesContainer = document.getElementById('busesContainer');
         if (busesContainer) {
             busesContainer.innerHTML = `
                 <div class="error-message">
-                    <p>Failed to load bus data. Please try again later.</p>
+                    <p>Failed to load bus data: ${error.message}</p>
                     <button onclick="fetchAndRenderBuses()">Retry</button>
                 </div>
             `;
