@@ -1,62 +1,7 @@
-
 // Use the centralized config for API URL
 const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/profile` : 'https://icb-tracking-website.vercel.app/api/profile';
 
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('imageUpload').addEventListener('change', uploadImage);
-    document.getElementById('editButton').addEventListener('click', enableEditing);
-    document.getElementById('saveButton').addEventListener('click', saveProfile);
-    
-    // Load user profile
-    loadProfile();
-});
-
-async function loadProfile() {
-    // First check localStorage for quick display
-    const savedProfile = localStorage.getItem('userProfile');
-    if (savedProfile) {
-        const profile = JSON.parse(savedProfile);
-        displayProfile(profile);
-    }
-
-    try {
-        // Then fetch from server for most up-to-date data
-        const response = await fetch(`${API_URL}/get`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        });
-
-        if (response.ok) {
-            const serverProfile = await response.json();
-            displayProfile(serverProfile);
-            // Update localStorage with fresh data
-            localStorage.setItem('userProfile', JSON.stringify(serverProfile));
-        }
-    } catch (error) {
-        console.error('Error fetching profile:', error);
-    }
-}
-
-function displayProfile(profile) {
-    if (!profile) return;
-
-    // Set all field values
-    if (profile.userId) document.getElementById('userId').value = profile.userId;
-    if (profile.fullName) {
-        document.getElementById('fullName').value = profile.fullName;
-        document.getElementById('nameDisplay').textContent = profile.fullName.toUpperCase();
-    }
-    if (profile.phoneNumber) document.getElementById('phoneNumber').value = profile.phoneNumber;
-    if (profile.dob) document.getElementById('dob').value = profile.dob;
-    if (profile.email) document.getElementById('email').value = profile.email;
-    if (profile.gender) document.getElementById('gender').value = profile.gender;
-    if (profile.branchYear) document.getElementById('branchYear').value = profile.branchYear;
-    if (profile.profileImg && profile.profileImg !== "default-profile.jpg") {
-        document.getElementById('profileImg').src = profile.profileImg;
-    }
-}
+document.getElementById('imageUpload').addEventListener('change', uploadImage);
 
 function uploadImage() {
     const file = document.getElementById('imageUpload').files[0];
@@ -70,24 +15,10 @@ function uploadImage() {
     }
 }
 
-function enableEditing() {
-    const fields = ['userId', 'fullName', 'phoneNumber', 'dob', 'email', 'gender', 'branchYear'];
-    fields.forEach(fieldId => {
-        document.getElementById(fieldId).disabled = false;
-    });
-    
-    document.getElementById('editButton').style.display = 'none';
-    document.getElementById('saveButton').style.display = 'block';
-}
-
-function disableEditing() {
-    const fields = ['userId', 'fullName', 'phoneNumber', 'dob', 'email', 'gender', 'branchYear'];
-    fields.forEach(fieldId => {
-        document.getElementById(fieldId).disabled = true;
-    });
-    
-    document.getElementById('editButton').style.display = 'block';
-    document.getElementById('saveButton').style.display = 'none';
+function editField(fieldId) {
+    const field = document.getElementById(fieldId);
+    field.disabled = false;
+    field.focus();
 }
 
 async function saveProfile() {
@@ -98,30 +29,71 @@ async function saveProfile() {
         dob: document.getElementById('dob').value,
         email: document.getElementById('email').value,
         gender: document.getElementById('gender').value,
-        branchYear: document.getElementById('branchYear').value,
+        branch: document.getElementById('branch').value,
+        year: document.getElementById('year').value,
         profileImg: localStorage.getItem('profileImg') || "default-profile.jpg",
     };
+
+    localStorage.setItem('userProfile', JSON.stringify(userProfile));
+
+    document.getElementById('nameDisplay').textContent = userProfile.fullName.toUpperCase();
+
+    // Disable all fields after saving
+    const fields = ['userId', 'fullName', 'phoneNumber', 'dob', 'email', 'gender', 'branch', 'year'];
+    fields.forEach(fieldId => {
+        document.getElementById(fieldId).disabled = true;
+    });
 
     try {
         const response = await fetch(API_URL, {
             method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(userProfile),
         });
 
         if (response.ok) {
-            const updatedProfile = await response.json();
-            localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-            displayProfile(updatedProfile);
-            disableEditing();
             alert("Profile saved successfully!");
         } else {
-            throw new Error('Failed to save profile');
+            throw new Error("Failed to save profile");
         }
     } catch (error) {
         alert(`Error: ${error.message}`);
     }
 }
+
+// Function to load profile data
+function loadProfile() {
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+        const profile = JSON.parse(savedProfile);
+        document.getElementById('userId').value = profile.userId || '';
+        document.getElementById('fullName').value = profile.fullName || '';
+        document.getElementById('phoneNumber').value = profile.phoneNumber || '';
+        document.getElementById('dob').value = profile.dob || '';
+        document.getElementById('email').value = profile.email || '';
+        document.getElementById('gender').value = profile.gender || '';
+        document.getElementById('branch').value = profile.branch || '';
+        document.getElementById('year').value = profile.year || '';
+        document.getElementById('nameDisplay').textContent = (profile.fullName || '').toUpperCase();
+        
+        if (profile.profileImg && profile.profileImg !== "default-profile.jpg") {
+            document.getElementById('profileImg').src = profile.profileImg;
+        }
+    }
+}
+
+// Add event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    loadProfile();
+    
+    document.getElementById('editButton').addEventListener('click', () => {
+        const fields = ['userId', 'fullName', 'phoneNumber', 'dob', 'email', 'gender', 'branch', 'year'];
+        fields.forEach(fieldId => {
+            document.getElementById(fieldId).disabled = false;
+        });
+        document.getElementById('editButton').style.display = 'none';
+        document.getElementById('saveButton').style.display = 'block';
+    });
+
+    document.getElementById('saveButton').addEventListener('click', saveProfile);
+});
