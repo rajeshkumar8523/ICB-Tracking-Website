@@ -60,6 +60,48 @@ body {
     color: #555;
 }
 
+/* Style for select elements */
+.register-container select {
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    border: none;
+    outline: none;
+    background: #ecf0f3;
+    border-radius: 50px;
+    box-shadow: inset 6px 6px 10px #cbced1, inset -6px -6px 10px #ffffff;
+    font-size: 14px;
+    color: #555;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 15px;
+    padding-right: 40px;
+}
+
+/* Style for date input */
+.register-container input[type="date"] {
+    width: 95%;
+    padding: 15px;
+    margin: 10px 0;
+    border: none;
+    outline: none;
+    background: #ecf0f3;
+    border-radius: 50px;
+    box-shadow: inset 6px 6px 10px #cbced1, inset -6px -6px 10px #ffffff;
+    font-size: 14px;
+    color: #555;
+}
+
+/* Remove default date picker icon */
+.register-container input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+    cursor: pointer;
+}
+
 /* Password Visibility Icon */
 .eye-icon {
     position: absolute;
