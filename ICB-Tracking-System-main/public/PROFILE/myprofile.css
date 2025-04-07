@@ -106,11 +106,24 @@ input[type="file"] {
     padding: 10px;
     border-radius: 8px;
     box-shadow: inset 6px 6px 10px #cbced1, inset -6px -6px 10px #ffffff;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 15px;
+    padding-right: 40px;
 }
 
 .field input:disabled, .field select:disabled {
     background: #f4f4f9;
     color: #000;
+    cursor: not-allowed;
+}
+
+.field select:disabled {
+    opacity: 0.7;
 }
 
 .edit-button, .save-button {
