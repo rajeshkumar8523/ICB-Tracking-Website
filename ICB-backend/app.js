@@ -10,9 +10,9 @@ const cors = require("cors");
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS with wildcard origin for development ease
+// Configure CORS to allow all origins and ensure Vercel connections work
 app.use(cors({
-  origin: '*',  // Allow all origins (more permissive)
+  origin: '*',  // Allow all origins to connect
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   credentials: true
@@ -83,24 +83,33 @@ mongoose.connection.on('error', err => {
   isDbConnected = false;
 });
 
-// Configure Socket.IO with enhanced CORS settings
+// Configure Socket.IO with enhanced CORS settings for Vercel deployment
 const io = socketio(server, {
   cors: {
-    origin: "*",  // Allow connections from all origins
+    origin: '*',  // Allow all origins (critical for Vercel deployment)
     methods: ["GET", "POST", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Accept", "Authorization"]
   },
   transports: ['websocket', 'polling'],
   allowEIO3: true,
-  pingTimeout: 30000,
+  pingTimeout: 60000,
   pingInterval: 25000,
-  connectTimeout: 30000
+  connectTimeout: 60000,
+  cookie: false
 });
 
 // Add diagnostic event listeners to help debug socket issues
 io.engine.on("connection_error", (err) => {
-  console.log("Connection error:", err.req, err.code, err.message, err.context);
+  console.log("Socket connection error:", err.req?.url, err.code, err.message, err.context);
+});
+
+// Middleware to log all socket events
+io.use((socket, next) => {
+  const address = socket.handshake.address;
+  const transport = socket.conn.transport.name;
+  console.log(`Socket connection attempt from ${address} using ${transport}`);
+  next();
 });
 
 // Add special handler for location tracking
@@ -130,6 +139,10 @@ const userSchema = new mongoose.Schema({
   ipAddress: { type: String },
   lastLogin: { type: Date },
   role: { type: String, enum: ["user", "driver", "admin"], default: "user" },
+  dob: { type: Date, required: true },
+  gender: { type: String, required: true, enum: ["male", "female", "other"] },
+  branch: { type: String, required: true },
+  year: { type: Number, required: true, min: 1, max: 4 }
 });
 
 const busSchema = new mongoose.Schema({
@@ -251,21 +264,25 @@ io.on("connection", (socket) => {
 // API Routes
 app.post("/api/register", async (req, res, next) => {
   try {
-    const { userId, name, contact, email, password, role } = req.body;
+    const { userId, name, contact, email, password, role, dob, gender, branch, year } = req.body;
     
     // Validate input with better error handling
-    if (!userId || !name || !contact || !email || !password) {
+    if (!userId || !name || !contact || !email || !password || !dob || !gender || !branch || !year) {
       console.log("Registration failed - missing fields:", { 
         userId: !!userId, 
         name: !!name, 
         contact: !!contact, 
         email: !!email, 
-        password: !!password 
+        password: !!password,
+        dob: !!dob,
+        gender: !!gender,
+        branch: !!branch,
+        year: !!year
       });
       
       return res.status(400).json({
         status: "fail",
-        message: "Please provide all required fields: userId, name, contact, email, password",
+        message: "Please provide all required fields: userId, name, contact, email, password, dob, gender, branch, year",
         receivedFields: Object.keys(req.body)
       });
     }
@@ -300,6 +317,10 @@ app.post("/api/register", async (req, res, next) => {
         ipAddress: getClientIp(req),
         lastLogin: new Date(),
         role: role || "user",
+        dob: new Date(dob),
+        gender,
+        branch,
+        year: parseInt(year)
       });
       
       console.log(`Successfully created user in database: ${userId}, role: ${newUser.role}`);
@@ -743,13 +764,21 @@ app.get("/api/trackers/recent/:busNumber", async (req, res) => {
   }
 });
 
-// API Routes for Socket.io health check
+// Add Socket.io server status API endpoint
 app.get("/api/socket-status", (req, res) => {
+  const connections = io.sockets.sockets ? Object.keys(io.sockets.sockets).length : 0;
+  
   res.status(200).json({
     status: "success",
     socketActive: true,
-    connections: Object.keys(io.sockets.sockets).length,
-    serverTime: new Date().toISOString()
+    connections: connections,
+    serverTime: new Date().toISOString(),
+    serverUrl: req.protocol + '://' + req.get('host'),
+    corsSettings: {
+      origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      credentials: true
+    }
   });
 });
 
