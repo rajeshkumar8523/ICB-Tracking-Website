@@ -25,6 +25,9 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the frontend
 app.use(express.static(path.join(__dirname, '../ICB-Tracking-System-main/public')));
 
+// Handle favicon request to avoid 500 error
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // MongoDB Connection
 const MONGO_URI =
   process.env.MONGO_URI ||
