@@ -5,6 +5,7 @@ const socketio = require("socket.io");
 const http = require("http");
 const path = require("path");
 const cors = require("cors");
+const jwt = require("jsonwebtoken"); // Add jsonwebtoken for token generation
 
 // Initialize Express app
 const app = express();
@@ -103,6 +104,9 @@ const getClientIp = (req) => {
   );
 };
 
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret"; // Ensure you have a secret in your .env file
+
 // Socket.IO Connection Handling
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
@@ -175,6 +179,7 @@ app.post("/api/register", async (req, res, next) => {
       branchYear,
       profileImg: "default-profile.jpg", // Default profile image
     });
+    const token = jwt.sign({ userId: newUser.userId }, JWT_SECRET, { expiresIn: '1h' });
     res.status(201).json({
       status: "success",
       data: {
@@ -185,6 +190,7 @@ app.post("/api/register", async (req, res, next) => {
           role: newUser.role,
           branchYear: newUser.branchYear,
           profileImg: newUser.profileImg,
+          token,
         },
       },
     });
@@ -213,6 +219,7 @@ app.post("/api/login", async (req, res, next) => {
     user.ipAddress = ipAddress;
     user.lastLogin = new Date();
     await user.save();
+    const token = jwt.sign({ userId: user.userId }, JWT_SECRET, { expiresIn: '1h' });
     res.status(200).json({
       status: "success",
       data: {
@@ -225,6 +232,7 @@ app.post("/api/login", async (req, res, next) => {
           lastLogin: user.lastLogin,
           branchYear: user.branchYear,
           profileImg: user.profileImg,
+          token,
         },
       },
     });
@@ -281,47 +289,6 @@ app.get("/api/me/:userId", async (req, res, next) => {
           phoneNumber: user.contact, // Assuming 'contact' is the phone number
           branchYear: user.branchYear,
           profileImg: user.profileImg || "default-profile.jpg",
-        },
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.put("/api/me/:userId", async (req, res, next) => {
-  try {
-    const { userId } = req.params;
-    const { fullName, phoneNumber, email, branchYear, profileImg } = req.body;
-    const user = await User.findOneAndUpdate(
-      { userId },
-      {
-        name: fullName,
-        contact: phoneNumber,
-        email,
-        branchYear,
-        profileImg,
-      },
-      { new: true }
-    );
-
-    if (!user) {
-      return res.status(404).json({
-        status: "fail",
-        message: "User not found",
-      });
-    }
-
-    res.status(200).json({
-      status: "success",
-      data: {
-        user: {
-          userId: user.userId,
-          fullName: user.name,
-          email: user.email,
-          phoneNumber: user.contact,
-          branchYear: user.branchYear,
-          profileImg: user.profileImg,
         },
       },
     });
