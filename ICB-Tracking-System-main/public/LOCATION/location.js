@@ -1,9 +1,9 @@
 // Use the centralized config for API URL
-API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+const API_BASE_URL = 'https://iot-tracker-api.vercel.app'; // Updated API URL
 
-// Get bus number from URL or default to 1
+// Get bus number from URL or default to ESP32_001
 const urlParams = new URLSearchParams(window.location.search);
-const busNumber = urlParams.get('bus') || '01';
+const busNumber = urlParams.get('bus') || 'ESP32_001';
 
 // Default coordinates for initial map view (center of Hyderabad)
 const defaultCoordinates = [17.3850, 78.4867];
@@ -156,7 +156,7 @@ function fetchLatestLocation() {
 
 // Fetch tracker location as fallback
 function fetchTrackerLocation() {
-  fetch(`${API_BASE_URL}/api/trackers/${busNumber}?limit=1`)
+  fetch(`${API_BASE_URL}/trackers/${busNumber}?limit=1`) // Updated URL
   .then(response => {
     if (!response.ok) {
       throw new Error('Network response was not ok');
