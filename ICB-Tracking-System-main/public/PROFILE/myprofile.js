@@ -32,6 +32,8 @@ async function loadProfile() {
             displayProfile(serverProfile);
             // Update localStorage with fresh data
             localStorage.setItem('userProfile', JSON.stringify(serverProfile));
+        } else {
+            throw new Error('Failed to fetch profile');
         }
     } catch (error) {
         console.error('Error fetching profile:', error);
@@ -49,6 +51,7 @@ function displayProfile(profile) {
     }
     if (profile.phoneNumber) document.getElementById('phoneNumber').value = profile.phoneNumber;
     if (profile.email) document.getElementById('email').value = profile.email;
+    if (profile.branchYear) document.getElementById('branchYear').value = profile.branchYear;
     if (profile.profileImg && profile.profileImg !== "default-profile.jpg") {
         document.getElementById('profileImg').src = profile.profileImg;
     }
@@ -92,6 +95,7 @@ async function saveProfile() {
         fullName: document.getElementById('fullName').value,
         phoneNumber: document.getElementById('phoneNumber').value,
         email: document.getElementById('email').value,
+        branchYear: document.getElementById('branchYear').value,
         profileImg: localStorage.getItem('profileImg') || "default-profile.jpg",
     };
 
