@@ -6,7 +6,7 @@
     const hostname = window.location.hostname;
     
     // Default to production (Vercel deployment)
-    let API_BASE_URL = 'https://icb-tracking-website.vercel.app';
+    let API_BASE_URL = 'https://iot-tracker-api.vercel.app'; // Updated API URL
     let environment = 'production';
     
     // If running locally, use localhost
@@ -22,13 +22,13 @@
     // Socket.io configuration - simplified for Vercel
     const socketConfig = {
       path: '/socket.io',
-      transports: ['polling'], // Only use polling for Vercel compatibility
+      transports: ['websocket', 'polling'], // Enable both websocket and polling
       reconnection: true,
       reconnectionAttempts: 3,
       reconnectionDelay: 2000,
       timeout: 10000,
       forceNew: true,
-      autoConnect: false,
+      autoConnect: true, // Automatically connect
       withCredentials: false,
       query: {
         "client": "web",
@@ -45,7 +45,7 @@
       allowDemoMode: true,
       socketConfig,
       featureFlags: {
-        socketEnabled: environment === 'development', // Disable socket in production Vercel environment
+        socketEnabled: true, // Enable socket in all environments
         offline: false
       }
     };
@@ -97,7 +97,7 @@
     
     // Provide fallback configuration to prevent application crash
     window.APP_CONFIG = window.APP_CONFIG || {
-      API_BASE_URL: 'https://icb-tracking-website.vercel.app',
+      API_BASE_URL: 'https://iot-tracker-api.vercel.app', // Updated API URL
       environment: 'production',
       version: '1.0.0',
       allowGuestMode: true,
@@ -117,4 +117,4 @@
     });
     document.dispatchEvent(configErrorEvent);
   }
-})(); 
+})();
