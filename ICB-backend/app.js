@@ -13,7 +13,7 @@ const server = http.createServer(app);
 // Add CORS middleware
 app.use(cors({
   origin: "*", // Adjust this to your specific frontend domain(s) in production
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "PUT"],
   credentials: true,
 }));
 
@@ -281,6 +281,47 @@ app.get("/api/me/:userId", async (req, res, next) => {
           phoneNumber: user.contact, // Assuming 'contact' is the phone number
           branchYear: user.branchYear,
           profileImg: user.profileImg || "default-profile.jpg",
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.put("/api/me/:userId", async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { fullName, phoneNumber, email, branchYear, profileImg } = req.body;
+    const user = await User.findOneAndUpdate(
+      { userId },
+      {
+        name: fullName,
+        contact: phoneNumber,
+        email,
+        branchYear,
+        profileImg,
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        user: {
+          userId: user.userId,
+          fullName: user.name,
+          email: user.email,
+          phoneNumber: user.contact,
+          branchYear: user.branchYear,
+          profileImg: user.profileImg,
         },
       },
     });
