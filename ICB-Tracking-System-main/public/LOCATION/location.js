@@ -1,5 +1,5 @@
 // Use the centralized config for API URL
-const API_BASE_URL = 'https://iot-tracker-api.vercel.app'; // Updated API URL
+const API_BASE_URL = window.APP_CONFIG.API_BASE_URL; // Use the API URL from config.js
 
 // Get bus number from URL or default to ESP32_001
 const urlParams = new URLSearchParams(window.location.search);
@@ -33,8 +33,8 @@ loadingOverlay.className = 'loading-overlay';
 loadingOverlay.innerHTML = '<div class="spinner"></div><p>Loading bus location...</p>';
 document.body.appendChild(loadingOverlay);
 
-// Connect to Socket.io server
-const socket = io('https://iot-tracker-api.vercel.app'); // Updated WebSocket URL
+// Create socket connection using the config
+const socket = window.APP_CONFIG.createSocketConnection();
 
 // Join the bus room after connecting
 socket.on('connect', () => {
@@ -156,7 +156,7 @@ function fetchLatestLocation() {
 
 // Fetch tracker location as fallback
 function fetchTrackerLocation() {
-  fetch(`${API_BASE_URL}/trackers/${busNumber}?limit=1`) // Updated URL
+  fetch(`${API_BASE_URL}/trackers/${busNumber}?limit=1`)
   .then(response => {
     if (!response.ok) {
       throw new Error('Network response was not ok');
