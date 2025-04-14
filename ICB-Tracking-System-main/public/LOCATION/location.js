@@ -34,7 +34,7 @@ loadingOverlay.innerHTML = '<div class="spinner"></div><p>Loading bus location..
 document.body.appendChild(loadingOverlay);
 
 // Connect to Socket.io server
-const socket = io(API_BASE_URL);
+const socket = io('https://iot-tracker-api.vercel.app'); // Updated WebSocket URL
 
 // Join the bus room after connecting
 socket.on('connect', () => {
