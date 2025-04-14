@@ -97,7 +97,7 @@ input[type="file"] {
     background: transparent;
     border: none;
     color: #000;
-    width: 80%;
+    width: 100%;
     font-size: 16px;
     padding: 10px;
     border-radius: 8px;
@@ -109,18 +109,7 @@ input[type="file"] {
     color: #000;
 }
 
-.edit-icon {
-    cursor: pointer;
-    color: #006171;
-    font-size: 18px;
-    transition: color 0.3s;
-}
-
-.edit-icon:hover {
-    color: #06adc6;
-}
-
-button {
+.edit-button, .save-button {
     width: 100%;
     padding: 15px;
     margin-top: 20px;
@@ -134,8 +123,17 @@ button {
     transition: all 0.3s ease;
 }
 
-button:hover {
+.edit-button:hover {
     background: #87CEEB;
+}
+
+.save-button {
+    background: #006171;
+    color: white;
+}
+
+.save-button:hover {
+    background: #06adc6;
 }
 
 @media screen and (max-width: 768px) {
@@ -164,11 +162,10 @@ button:hover {
     }
 
     .field input, .field select {
-        width: 70%;
         font-size: 14px;
     }
 
-    button {
+    .edit-button, .save-button {
         font-size: 14px;
         padding: 12px;
     }
