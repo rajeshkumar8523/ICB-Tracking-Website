@@ -14,7 +14,7 @@
 
     <div class="container">
         <div class="profile-container">
-            <img id="profileImg" src="default-profile.jpg" alt="Profile Picture" class="profile-image">
+            <img id="profileImg" src="https://assets.onecompiler.app/42ucesb3u/43dwyqbqs/How%20to%20Create%20a%20Ladder%20Workout.jpg" alt="Profile Picture" class="profile-image">
             <label for="imageUpload" class="camera-icon">
                 <i class="fa-solid fa-camera"></i>
             </label>
@@ -24,37 +24,21 @@
         <div class="profile-info">
             <div class="field">
                 <input type="text" id="userId" placeholder="Enter User ID" disabled>
-                <i class="fa-solid fa-pen edit-icon" onclick="editField('userId')"></i>
             </div>
             <div class="field">
                 <input type="text" id="fullName" placeholder="Enter Full Name" disabled>
-                <i class="fa-solid fa-pen edit-icon" onclick="editField('fullName')"></i>
             </div>
             <div class="field">
                 <input type="tel" id="phoneNumber" placeholder="Enter Phone Number" disabled>
-                <i class="fa-solid fa-pen edit-icon" onclick="editField('phoneNumber')"></i>
-            </div>
-            <div class="field">
-                <input type="date" id="dob" placeholder="Select Date of Birth" disabled>
-                <i class="fa-solid fa-pen edit-icon" onclick="editField('dob')"></i>
             </div>
             <div class="field">
                 <input type="email" id="email" placeholder="Enter Email" disabled>
-                <i class="fa-solid fa-pen edit-icon" onclick="editField('email')"></i>
-            </div>
-            <div class="field">
-                <select id="gender" disabled>
-                    <option value="" selected disabled>Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                </select>
-                <i class="fa-solid fa-pen edit-icon" onclick="editField('gender')"></i>
             </div>
             <div class="field">
                 <input type="text" id="branchYear" placeholder="Enter Branch/Year" disabled>
-                <i class="fa-solid fa-pen edit-icon" onclick="editField('branchYear')"></i>
             </div>
-            <button onclick="saveProfile()">Save Changes</button>
+            <button id="editButton" class="edit-button">Edit Profile</button>
+            <button id="saveButton" class="save-button" style="display: none;">Save Changes</button>
         </div>
     </div>
 
