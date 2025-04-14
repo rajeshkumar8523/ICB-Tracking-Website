@@ -1,5 +1,5 @@
 // Use the centralized config for API URL
-const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/profile` : 'https://iot-tracker-api.vercel.app/api/profile';
+const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/me` : 'https://iot-tracker-api.vercel.app/api/me';
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('imageUpload').addEventListener('change', uploadImage);
@@ -20,7 +20,11 @@ async function loadProfile() {
 
     try {
         // Then fetch from server for most up-to-date data
-        const response = await fetch(`${API_URL}/get`, {
+        const userId = localStorage.getItem('userId'); // Ensure userId is stored in localStorage
+        if (!userId) {
+            throw new Error('User ID not found in localStorage');
+        }
+        const response = await fetch(`${API_URL}/${userId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -100,8 +104,8 @@ async function saveProfile() {
     };
 
     try {
-        const response = await fetch(`${API_URL}`, {
-            method: "POST",
+        const response = await fetch(`${API_URL}/${userProfile.userId}`, {
+            method: "PUT",
             headers: { 
                 "Content-Type": "application/json",
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
