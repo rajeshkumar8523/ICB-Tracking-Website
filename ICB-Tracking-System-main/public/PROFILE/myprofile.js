@@ -1,5 +1,5 @@
 // Use the centralized config for API URL
-const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/profile` : 'https://icb-tracking-website.vercel.app/api/profile';
+const API_URL = window.APP_CONFIG ? `${window.APP_CONFIG.API_BASE_URL}/api/profile` : 'https://iot-tracker-api.vercel.app/api/profile';
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('imageUpload').addEventListener('change', uploadImage);
@@ -29,9 +29,9 @@ async function loadProfile() {
 
         if (response.ok) {
             const serverProfile = await response.json();
-            displayProfile(serverProfile);
+            displayProfile(serverProfile.data.user);
             // Update localStorage with fresh data
-            localStorage.setItem('userProfile', JSON.stringify(serverProfile));
+            localStorage.setItem('userProfile', JSON.stringify(serverProfile.data.user));
         } else {
             throw new Error('Failed to fetch profile');
         }
@@ -100,7 +100,7 @@ async function saveProfile() {
     };
 
     try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(`${API_URL}`, {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
@@ -111,8 +111,8 @@ async function saveProfile() {
 
         if (response.ok) {
             const updatedProfile = await response.json();
-            localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-            displayProfile(updatedProfile);
+            localStorage.setItem('userProfile', JSON.stringify(updatedProfile.data.user));
+            displayProfile(updatedProfile.data.user);
             disableEditing();
             alert("Profile saved successfully!");
         } else {
