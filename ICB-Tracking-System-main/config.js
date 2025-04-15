@@ -1,6 +1,6 @@
 (function() {
   try {
-    // Detect environment
+    // Detect environment 
     const hostname = window.location.hostname;
 
     // Default to production (Vercel deployment)
