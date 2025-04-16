@@ -1,5 +1,5 @@
 // Use the centralized config for API URL
-const API_BASE_URL = "https://iot-tracker-api.vercel.app/trackers"; // Use the API URL from config.js
+const API_BASE_URL = "https://iot-tracker-api.vercel.app/trackers/"; // Use the API URL from config.js
 
 // Get bus number from URL or default to ESP32_001
 const urlParams = new URLSearchParams(window.location.search);
