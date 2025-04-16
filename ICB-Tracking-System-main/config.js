@@ -84,7 +84,7 @@
     console.error('[config.js] Error setting up configuration:', error);
 
     window.APP_CONFIG = window.APP_CONFIG || {
-      API_BASE_URL: 'https://your-backend-url.vercel.app',
+      API_BASE_URL: 'https://icb-tracking-website.vercel.app',
       environment: 'production',
       version: '1.0.0',
       allowGuestMode: true,
