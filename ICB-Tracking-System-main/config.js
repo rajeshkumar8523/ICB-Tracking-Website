@@ -4,7 +4,7 @@
     const hostname = window.location.hostname;
 
     // Default to production (Vercel deployment)
-    let API_BASE_URL = 'https://your-backend-url.vercel.app'; // Replace with your backend URL
+    let API_BASE_URL = 'https://icb-tracking-website.vercel.app'; // Replace with your backend URL
     let environment = 'production';
 
     // If running locally, use localhost
