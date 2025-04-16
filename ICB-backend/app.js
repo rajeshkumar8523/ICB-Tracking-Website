@@ -6,33 +6,24 @@ const http = require("http");
 const path = require("path");
 const cors = require("cors");
 const jwt = require("jsonwebtoken"); // Add jsonwebtoken for token generation
-
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
-
 // Add CORS middleware
 app.use(cors({
   origin: "*", // Adjust this to your specific frontend domain(s) in production
   methods: ["GET", "POST", "PUT"],
   credentials: true,
 }));
-
 // Basic middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 // Serve static files from the frontend
 app.use(express.static(path.join(__dirname, '../ICB-Tracking-System-main/public')));
-
-// Handle favicon request to avoid 500 error
-app.get('/favicon.ico', (req, res) => res.status(204).end());
-
 // MongoDB Connection
 const MONGO_URI =
   process.env.MONGO_URI ||
   "mongodb+srv://rajesh:rajesh@cluster0.cqkgbx3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-
 mongoose
   .connect(MONGO_URI)
   .then(() => {
@@ -43,7 +34,6 @@ mongoose
     console.error("Server will not function without a database connection.");
     process.exit(1); // Exit the application if the database connection fails
   });
-
 // Configure Socket.IO with open CORS
 const io = socketio(server, {
   cors: {
@@ -52,7 +42,6 @@ const io = socketio(server, {
     credentials: true,
   },
 });
-
 // Schemas and Models
 const userSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
@@ -66,7 +55,6 @@ const userSchema = new mongoose.Schema({
   branchYear: { type: String }, // Add this field
   profileImg: { type: String }, // Add this field
 });
-
 const busSchema = new mongoose.Schema({
   busNumber: { type: String, required: true, unique: true },
   driverId: { type: String, required: true },
@@ -82,7 +70,6 @@ const busSchema = new mongoose.Schema({
   latitude: { type: Number },
   longitude: { type: Number },
 });
-
 const trackerSchema = new mongoose.Schema({
   deviceId: { type: String, required: true },
   busNumber: { type: String, required: true },
@@ -92,11 +79,9 @@ const trackerSchema = new mongoose.Schema({
   direction: { type: Number },
   timestamp: { type: Date, default: Date.now },
 });
-
 const User = mongoose.model("User", userSchema);
 const Bus = mongoose.model("Bus", busSchema);
 const Tracker = mongoose.model("Tracker", trackerSchema);
-
 // Utility functions
 const getClientIp = (req) => {
   return (
@@ -106,10 +91,8 @@ const getClientIp = (req) => {
     (req.connection.socket ? req.connection.socket.remoteAddress : null)
   );
 };
-
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret"; // Ensure you have a secret in your .env file
-
 // Socket.IO Connection Handling
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
@@ -157,7 +140,6 @@ io.on("connection", (socket) => {
     console.log("Client disconnected:", socket.id);
   });
 });
-
 // API Routes
 app.post("/api/register", async (req, res, next) => {
   try {
@@ -201,7 +183,6 @@ app.post("/api/register", async (req, res, next) => {
     next(err);
   }
 });
-
 app.post("/api/login", async (req, res, next) => {
   try {
     const { userId, password } = req.body;
@@ -243,7 +224,6 @@ app.post("/api/login", async (req, res, next) => {
     next(err);
   }
 });
-
 // Reset Password Endpoint
 app.post("/api/reset-password", async (req, res, next) => {
   try {
@@ -271,7 +251,6 @@ app.post("/api/reset-password", async (req, res, next) => {
     next(err);
   }
 });
-
 // User Profile Route
 app.get("/api/me/:userId", async (req, res, next) => {
   try {
@@ -299,7 +278,6 @@ app.get("/api/me/:userId", async (req, res, next) => {
     next(err);
   }
 });
-
 // Bus Management Endpoints
 app.post("/api/buses", async (req, res, next) => {
   try {
@@ -321,7 +299,6 @@ app.post("/api/buses", async (req, res, next) => {
     next(err);
   }
 });
-
 app.get("/api/buses", async (req, res) => {
   try {
     const buses = await Bus.find();
@@ -340,7 +317,6 @@ app.get("/api/buses", async (req, res) => {
     });
   }
 });
-
 app.get("/api/buses/:busNumber", async (req, res) => {
   try {
     const { busNumber } = req.params;
@@ -365,7 +341,6 @@ app.get("/api/buses/:busNumber", async (req, res) => {
     });
   }
 });
-
 // Location Tracking Endpoints
 app.post("/api/trackers", async (req, res, next) => {
   try {
@@ -424,7 +399,6 @@ app.post("/api/trackers", async (req, res, next) => {
     next(err);
   }
 });
-
 app.get("/api/trackers/:busNumber", async (req, res) => {
   try {
     const { busNumber } = req.params;
@@ -447,7 +421,6 @@ app.get("/api/trackers/:busNumber", async (req, res) => {
     });
   }
 });
-
 app.get("/api/trackers/history/:busNumber", async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
@@ -470,12 +443,10 @@ app.get("/api/trackers/history/:busNumber", async (req, res, next) => {
     next(err);
   }
 });
-
 // Route for serving index HTML
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, '../ICB-Tracking-System-main/public/INDEX/index.html'));
 });
-
 // Catch-all route to serve frontend for any route not matching API routes
 app.get("*", (req, res) => {
   const urlPath = req.path.substring(1); // Remove the leading slash
@@ -491,7 +462,6 @@ app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, '../ICB-Tracking-System-main/public/INDEX/index.html'));
   }
 });
-
 // Global error handler middleware
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err);
@@ -500,13 +470,11 @@ app.use((err, req, res, next) => {
     message: "Something went wrong!",
   });
 });
-
 // Start Server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
 // Error handling
 process.on("unhandledRejection", (err) => {
   console.error("UNHANDLED REJECTION! Shutting down...");
@@ -515,7 +483,6 @@ process.on("unhandledRejection", (err) => {
     process.exit(1);
   });
 });
-
 process.on("uncaughtException", (err) => {
   console.error("UNCAUGHT EXCEPTION! Shutting down...");
   console.error(err.name, err.message);
