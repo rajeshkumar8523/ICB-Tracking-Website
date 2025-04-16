@@ -1,9 +1,9 @@
 // Use the centralized config for API URL
-const API_BASE_URL = window.APP_CONFIG.API_BASE_URL; // Use the API URL from config.js
+API_BASE_URL = 'https://icb-tracking-website.vercel.app';
 
-// Get bus number from URL or default to ESP32_001
+// Get bus number from URL or default to 1
 const urlParams = new URLSearchParams(window.location.search);
-const busNumber = urlParams.get('bus') || 'ESP32_001';
+const busNumber = urlParams.get('bus') || '01';
 
 // Default coordinates for initial map view (center of Hyderabad)
 const defaultCoordinates = [17.3850, 78.4867];
@@ -33,8 +33,8 @@ loadingOverlay.className = 'loading-overlay';
 loadingOverlay.innerHTML = '<div class="spinner"></div><p>Loading bus location...</p>';
 document.body.appendChild(loadingOverlay);
 
-// Create socket connection using the config
-const socket = window.APP_CONFIG.createSocketConnection();
+// Connect to Socket.io server
+const socket = io(API_BASE_URL);
 
 // Join the bus room after connecting
 socket.on('connect', () => {
@@ -156,7 +156,7 @@ function fetchLatestLocation() {
 
 // Fetch tracker location as fallback
 function fetchTrackerLocation() {
-  fetch(`${API_BASE_URL}/trackers/${busNumber}?limit=1`)
+  fetch(`${API_BASE_URL}/api/trackers/${busNumber}?limit=1`)
   .then(response => {
     if (!response.ok) {
       throw new Error('Network response was not ok');

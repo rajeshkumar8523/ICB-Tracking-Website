@@ -5,18 +5,13 @@ const socketio = require("socket.io");
 const http = require("http");
 const path = require("path");
 const cors = require("cors");
-const jwt = require("jsonwebtoken"); // Add jsonwebtoken for token generation
 
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
 
 // Add CORS middleware
-app.use(cors({
-  origin: "*", // Adjust this to your specific frontend domain(s) in production
-  methods: ["GET", "POST", "PUT"],
-  credentials: true,
-}));
+app.use(cors());
 
 // Basic middleware
 app.use(express.json());
@@ -24,9 +19,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from the frontend
 app.use(express.static(path.join(__dirname, '../ICB-Tracking-System-main/public')));
-
-// Handle favicon request to avoid 500 error
-app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // MongoDB Connection
 const MONGO_URI =
@@ -47,9 +39,8 @@ mongoose
 // Configure Socket.IO with open CORS
 const io = socketio(server, {
   cors: {
-    origin: "*", // Adjust this to your specific frontend domain(s) in production
+    origin: "*",
     methods: ["GET", "POST"],
-    credentials: true,
   },
 });
 
@@ -63,8 +54,6 @@ const userSchema = new mongoose.Schema({
   ipAddress: { type: String },
   lastLogin: { type: Date },
   role: { type: String, enum: ["user", "driver", "admin"], default: "user" },
-  branchYear: { type: String }, // Add this field
-  profileImg: { type: String }, // Add this field
 });
 
 const busSchema = new mongoose.Schema({
@@ -107,19 +96,19 @@ const getClientIp = (req) => {
   );
 };
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret"; // Ensure you have a secret in your .env file
-
 // Socket.IO Connection Handling
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
+
   socket.on("joinBus", (busNumber) => {
     socket.join(busNumber);
     console.log(`Socket ${socket.id} joined bus ${busNumber}`);
   });
+
   socket.on("locationUpdate", async (data) => {
     try {
       const { busNumber, latitude, longitude, speed, direction } = data;
+
       // Save to database
       const tracker = new Tracker({
         deviceId: socket.id,
@@ -130,6 +119,7 @@ io.on("connection", (socket) => {
         direction,
       });
       await tracker.save();
+
       await Bus.findOneAndUpdate(
         { busNumber },
         {
@@ -139,6 +129,7 @@ io.on("connection", (socket) => {
         },
         { upsert: true }
       );
+
       // Emit to all clients in the bus room
       io.to(busNumber).emit("busLocation", {
         busNumber,
@@ -153,6 +144,7 @@ io.on("connection", (socket) => {
       socket.emit("error", { message: "Failed to update location" });
     }
   });
+
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
   });
@@ -161,7 +153,8 @@ io.on("connection", (socket) => {
 // API Routes
 app.post("/api/register", async (req, res, next) => {
   try {
-    const { userId, name, contact, email, password, role, branchYear } = req.body;
+    const { userId, name, contact, email, password, role } = req.body;
+
     const existingUser = await User.findOne({ $or: [{ userId }, { email }] });
     if (existingUser) {
       return res.status(400).json({
@@ -169,6 +162,7 @@ app.post("/api/register", async (req, res, next) => {
         message: "User ID or Email already exists",
       });
     }
+
     const ipAddress = getClientIp(req);
     const newUser = await User.create({
       userId,
@@ -179,10 +173,8 @@ app.post("/api/register", async (req, res, next) => {
       ipAddress,
       lastLogin: new Date(),
       role: role || "user",
-      branchYear,
-      profileImg: "default-profile.jpg", // Default profile image
     });
-    const token = jwt.sign({ userId: newUser.userId }, JWT_SECRET, { expiresIn: '1h' });
+
     res.status(201).json({
       status: "success",
       data: {
@@ -191,9 +183,6 @@ app.post("/api/register", async (req, res, next) => {
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
-          branchYear: newUser.branchYear,
-          profileImg: newUser.profileImg,
-          token,
         },
       },
     });
@@ -211,6 +200,7 @@ app.post("/api/login", async (req, res, next) => {
         message: "Please provide user ID and password!",
       });
     }
+
     const user = await User.findOne({ userId });
     const ipAddress = getClientIp(req);
     if (!user || password !== user.password) {
@@ -219,10 +209,11 @@ app.post("/api/login", async (req, res, next) => {
         message: "Incorrect user ID or password",
       });
     }
+
     user.ipAddress = ipAddress;
     user.lastLogin = new Date();
     await user.save();
-    const token = jwt.sign({ userId: user.userId }, JWT_SECRET, { expiresIn: '1h' });
+
     res.status(200).json({
       status: "success",
       data: {
@@ -233,9 +224,6 @@ app.post("/api/login", async (req, res, next) => {
           role: user.role,
           ipAddress: user.ipAddress,
           lastLogin: user.lastLogin,
-          branchYear: user.branchYear,
-          profileImg: user.profileImg,
-          token,
         },
       },
     });
@@ -254,6 +242,7 @@ app.post("/api/reset-password", async (req, res, next) => {
         message: "Please provide user ID and new password",
       });
     }
+
     const user = await User.findOne({ userId });
     if (!user) {
       return res.status(404).json({
@@ -261,8 +250,10 @@ app.post("/api/reset-password", async (req, res, next) => {
         message: "User not found",
       });
     }
+
     user.password = newPassword;
     await user.save();
+
     res.status(200).json({
       status: "success",
       message: "Password updated successfully",
@@ -282,16 +273,15 @@ app.get("/api/me/:userId", async (req, res, next) => {
         message: "User not found",
       });
     }
+
     res.status(200).json({
       status: "success",
       data: {
         user: {
           userId: user.userId,
-          fullName: user.name, // Assuming 'name' is the full name
+          name: user.name,
           email: user.email,
-          phoneNumber: user.contact, // Assuming 'contact' is the phone number
-          branchYear: user.branchYear,
-          profileImg: user.profileImg || "default-profile.jpg",
+          role: user.role,
         },
       },
     });
@@ -304,6 +294,7 @@ app.get("/api/me/:userId", async (req, res, next) => {
 app.post("/api/buses", async (req, res, next) => {
   try {
     const { busNumber, route, driverId, capacity, contactNumber } = req.body;
+
     const bus = await Bus.create({
       busNumber,
       route,
@@ -311,6 +302,7 @@ app.post("/api/buses", async (req, res, next) => {
       capacity,
       contactNumber,
     });
+
     res.status(201).json({
       status: "success",
       data: {
@@ -351,6 +343,7 @@ app.get("/api/buses/:busNumber", async (req, res) => {
         message: "Bus not found",
       });
     }
+
     res.status(200).json({
       status: "success",
       data: {
@@ -382,6 +375,7 @@ app.post("/api/trackers", async (req, res, next) => {
         message: "Latitude and longitude must be valid numbers",
       });
     }
+
     const tracker = await Tracker.create({
       deviceId: req.headers["device-id"] || "web",
       busNumber,
@@ -390,6 +384,7 @@ app.post("/api/trackers", async (req, res, next) => {
       speed: speed ? parseFloat(speed) : null,
       direction: direction ? parseFloat(direction) : null,
     });
+
     await Bus.findOneAndUpdate(
       { busNumber },
       {
@@ -399,6 +394,7 @@ app.post("/api/trackers", async (req, res, next) => {
       },
       { upsert: true, new: true }
     );
+
     io.to(busNumber).emit("busLocation", {
       busNumber,
       latitude: tracker.latitude,
@@ -407,6 +403,7 @@ app.post("/api/trackers", async (req, res, next) => {
       direction: tracker.direction,
       timestamp: tracker.timestamp,
     });
+
     res.status(201).json({
       status: "success",
       data: {
@@ -429,9 +426,11 @@ app.get("/api/trackers/:busNumber", async (req, res) => {
   try {
     const { busNumber } = req.params;
     const { limit = 1 } = req.query;
+
     const trackers = await Tracker.find({ busNumber })
       .sort({ timestamp: -1 })
       .limit(parseInt(limit));
+
     res.status(200).json({
       status: "success",
       results: trackers.length,
@@ -458,6 +457,7 @@ app.get("/api/trackers/history/:busNumber", async (req, res, next) => {
         $lte: new Date(endDate),
       };
     }
+
     const trackers = await Tracker.find(query).sort({ timestamp: 1 });
     res.status(200).json({
       status: "success",

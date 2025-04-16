@@ -40,7 +40,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
     try {
         // Use the centralized config for API URL
-        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://iot-tracker-api.vercel.app';
+        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://icb-tracking-website.vercel.app';
         
         const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
@@ -62,9 +62,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         successMessage.textContent = "Login successful! Redirecting...";
         successMessage.style.display = "block";
         
-        // Store user ID and token for later use
-        localStorage.setItem('userId', data.data.user.userId);
-        localStorage.setItem('token', data.data.user.token);
+        // Store user ID for later use
+        localStorage.setItem('userId', userId);
         
         // Redirect to welcome page after 1 second
         setTimeout(() => {
@@ -94,9 +93,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     }
 
     try {
-        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'https://iot-tracker-api.vercel.app';
-        
-        const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
+        const response = await fetch('https://icb-tracking-website.vercel.app/api/reset-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
