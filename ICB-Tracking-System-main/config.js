@@ -1,122 +1,128 @@
-
-
 // Configuration file for API endpoints and application settings
-
 (function() {
-try {
-// Detect environment - This can be used for automatic environment switching
-const hostname = window.location.hostname;
+  try {
+    // Detect environment - This can be used for automatic environment switching
+    const hostname = window.location.hostname;
 
-// Default to production (Vercel deployment)
-let API_BASE_URL = 'https://iot-tracker-api.vercel.app'; // Updated API URL
-let environment = 'production';
+    // Default to production (Vercel deployment)
+    let API_BASE_URL = 'https://iot-tracker-api.vercel.app';
+    let environment = 'production';
 
-// If running locally, use localhost
-if (hostname === 'localhost' || hostname === '127.0.0.1') {
-API_BASE_URL = 'http://localhost:3000';
-environment = 'development';
-}
+    // If running locally, use localhost
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      API_BASE_URL = 'http://localhost:3000';
+      environment = 'development';
+    }
 
-// For testing, log the API URL and environment
-console.log(`[config.js] Environment: ${environment}`);
-console.log(`[config.js] Using API URL: ${API_BASE_URL}`);
+    console.log(`[config.js] Environment: ${environment}`);
+    console.log(`[config.js] Using API URL: ${API_BASE_URL}`);
 
-// Socket.io configuration - simplified for Vercel
-const socketConfig = {
-path: '/socket.io',
-transports: ['websocket', 'polling'], // Enable both websocket and polling
-reconnection: true,
-reconnectionAttempts: 3,
-reconnectionDelay: 2000,
-timeout: 10000,
-forceNew: true,
-autoConnect: true, // Automatically connect
-withCredentials: false,
-query: {
-"client": "web",
-"version": "1.0.0"
-}
-};
+    // Socket.io configuration - simplified for Vercel
+    const socketConfig = {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 3,
+      reconnectionDelay: 2000,
+      timeout: 10000,
+      forceNew: true,
+      autoConnect: true,
+      withCredentials: false,
+      query: {
+        "client": "web",
+        "version": "1.0.0"
+      }
+    };
 
-// Store configuration in global variable
-window.APP_CONFIG = {
-API_BASE_URL,
-environment,
-version: '1.0.0',
-allowGuestMode: true,
-allowDemoMode: true,
-socketConfig,
-featureFlags: {
-socketEnabled: true, // Enable socket in all environments
-offline: false
-}
-};
+    // Store configuration in global variable
+    window.APP_CONFIG = {
+      API_BASE_URL,
+      environment,
+      version: '1.0.0',
+      allowGuestMode: true,
+      allowDemoMode: true,
+      socketConfig,
+      featureFlags: {
+        socketEnabled: true,
+        offline: false
+      },
+      
+      // Modified createSocketConnection to be more defensive
+      createSocketConnection: function() {
+        // Check if io is available
+        if (typeof io === 'undefined') {
+          console.error('[config.js] Socket.io not loaded. Make sure to include socket.io.js before this file.');
+          this.featureFlags.socketEnabled = false;
+          return {
+            on: () => {},
+            emit: () => {},
+            disconnect: () => {}
+          }; // Return mock socket object
+        }
 
-// Add a method to check if we're running in offline mode
-window.APP_CONFIG.isOffline = function() {
-return !navigator.onLine || this.featureFlags.offline;
-};
+        try {
+          const socket = io(this.API_BASE_URL, this.socketConfig);
 
-// Add a helper method to create socket connections
-window.APP_CONFIG.createSocketConnection = function() {
-if (!window.io) {
-console.error('[config.js] Socket.io library not loaded');
-return null;
-}
+          socket.on('connect_error', (err) => {
+            console.error('[config.js] Socket connection error:', err);
+            if (this.environment === 'production') {
+              this.featureFlags.socketEnabled = false;
+            }
+          });
 
-try {
-// Create socket connection with adapted config
-const socket = io(this.API_BASE_URL, this.socketConfig);
+          return socket;
+        } catch (e) {
+          console.error('[config.js] Failed to create socket connection:', e);
+          return {
+            on: () => {},
+            emit: () => {},
+            disconnect: () => {}
+          }; // Return mock socket object
+        }
+      },
+      
+      isOffline: function() {
+        return !navigator.onLine || this.featureFlags.offline;
+      }
+    };
 
-// Add global error handlers
-socket.on('connect_error', (err) => {
-console.error('[config.js] Socket connection error:', err);
-// In production Vercel, just disable the socket functionality
-if (this.environment === 'production') {
-this.featureFlags.socketEnabled = false;
-socket.disconnect();
-}
-});
+    console.log('[config.js] Configuration loaded successfully');
+    
+    const configLoadedEvent = new CustomEvent('app-config-loaded', {
+      detail: { config: window.APP_CONFIG }
+    });
+    document.dispatchEvent(configLoadedEvent);
 
-return socket;
-} catch (e) {
-console.error('[config.js] Failed to create socket connection:', e);
-return null;
-}
-};
+  } catch (error) {
+    console.error('[config.js] Error setting up configuration:', error);
 
-// Log success message
-console.log('[config.js] Configuration loaded successfully');
+    // Safer fallback configuration
+    window.APP_CONFIG = {
+      API_BASE_URL: 'https://iot-tracker-api.vercel.app',
+      environment: 'production',
+      version: '1.0.0',
+      allowGuestMode: true,
+      allowDemoMode: true,
+      featureFlags: {
+        socketEnabled: false,
+        offline: false
+      },
+      isOffline: function() {
+        return !navigator.onLine || this.featureFlags.offline;
+      },
+      createSocketConnection: function() {
+        console.warn('[config.js] Using fallback mock socket connection');
+        return {
+          on: () => {},
+          emit: () => {},
+          disconnect: () => {}
+        };
+      }
+    };
 
-// Dispatch an event when config is loaded
-const configLoadedEvent = new CustomEvent('app-config-loaded', {
-detail: { config: window.APP_CONFIG }
-});
-document.dispatchEvent(configLoadedEvent);
-
-} catch (error) {
-console.error('[config.js] Error setting up configuration:', error);
-
-// Provide fallback configuration to prevent application crash
-window.APP_CONFIG = window.APP_CONFIG || {
-API_BASE_URL: 'https://iot-tracker-api.vercel.app', // Updated API URL
-environment: 'production',
-version: '1.0.0',
-allowGuestMode: true,
-allowDemoMode: true,
-featureFlags: {
-socketEnabled: false,
-offline: false
-},
-isOffline: function() {
-return !navigator.onLine || this.featureFlags.offline;
-}
-};
-
-// Dispatch error event
-const configErrorEvent = new CustomEvent('app-config-error', {
-detail: { error: error.message }
-});
-document.dispatchEvent(configErrorEvent);
-}
+    const configErrorEvent = new CustomEvent('app-config-error', {
+      detail: { error: error.message }
+    });
+    document.dispatchEvent(configErrorEvent);
+  }
 })();
