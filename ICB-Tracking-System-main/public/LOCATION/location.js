@@ -1,24 +1,16 @@
-// Wait for config to be loaded before initializing
-document.addEventListener('app-config-loaded', initApplication);
-document.addEventListener('app-config-error', initApplication);
-
-// Fallback in case config events don't fire
-setTimeout(initApplication, 2000);
+// Define API Base URL directly
+const API_BASE_URL = "https://iot-tracker-api.vercel.app";
 
 function initApplication() {
   try {
-    // Use the centralized config for API URL or fallback
-    const API_BASE_URL = window.APP_CONFIG?.API_BASE_URL || "https://iot-tracker-api.vercel.app";
-    const FALLBACK_API_URL = "https://icb-tracking-website.vercel.app";
-    
-    // Get bus number from URL or default to ESP32_001
+    // Get tracker ID from URL or default to ESP32_001
     const urlParams = new URLSearchParams(window.location.search);
-    const busNumber = urlParams.get('bus') || 'ESP32_001';
+    // Use 'bus' parameter name as it's used in home.html link, but treat it as trackerId
+    const trackerId = urlParams.get('bus') || 'ESP32_001'; 
 
     // Default coordinates for initial map view (center of Hyderabad)
-    const defaultCoordinates = [17.3850, 78.4867];
+    const defaultCoordinates = [17.3850, 78.4867]; 
     let hasLoadedLocation = false;
-    let socket;
     let refreshInterval;
 
     // Initialize the map with error handling
@@ -30,118 +22,83 @@ function initApplication() {
       }).addTo(map);
     } catch (mapError) {
       console.error('Map initialization failed:', mapError);
-      document.getElementById('map').innerHTML = '<p class="error">Failed to load map. Please refresh the page.</p>';
+      const mapElement = document.getElementById('map');
+      if (mapElement) {
+          mapElement.innerHTML = '<p class="error">Failed to load map. Please refresh the page.</p>';
+      }
     }
 
-    // Custom bus icon
-    const busIcon = L.icon({
-      iconUrl: 'https://cdn-icons-png.flaticon.com/512/477/477103.png',
+    // Custom tracker icon (using the same bus icon for now)
+    const trackerIcon = L.icon({
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/477/477103.png', // Can be changed later
       iconSize: [40, 40],
       iconAnchor: [20, 40],
       popupAnchor: [0, -40]
     });
 
-    // Create bus marker with default position
-    let busMarker;
+    // Create tracker marker with default position
+    let trackerMarker;
     if (map) {
-      busMarker = L.marker(defaultCoordinates, { icon: busIcon }).addTo(map);
-      busMarker.bindPopup(`Bus ${busNumber}`).openPopup();
+      trackerMarker = L.marker(defaultCoordinates, { icon: trackerIcon }).addTo(map);
+      trackerMarker.bindPopup(`Tracker ${trackerId}`).openPopup();
     }
 
-    // Add loading overlay
+     // Add loading overlay
     const loadingOverlay = document.createElement('div');
     loadingOverlay.className = 'loading-overlay';
     loadingOverlay.innerHTML = '<div class="spinner"></div><p>Loading bus location...</p>';
     document.body.appendChild(loadingOverlay);
 
-    // Enhanced API fetch function with retry and fallback
+    // Simple API fetch function
     async function fetchApiData(endpoint, options = {}) {
-      const urlsToTry = [
-        `${API_BASE_URL}${endpoint}`,
-        `${FALLBACK_API_URL}${endpoint}`
-      ];
-
-      for (const url of urlsToTry) {
         try {
-          const response = await fetch(url, options);
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          return await response.json();
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.json();
         } catch (error) {
-          console.warn(`Attempt failed for ${url}:`, error);
-          if (url === urlsToTry[urlsToTry.length - 1]) throw error; // Only throw if last attempt
+            console.error(`API fetch failed for ${endpoint}:`, error);
+            throw error; // Re-throw
         }
+    }
+
+    // Update header with tracker ID
+    function updateTrackerInfo() {
+      try {
+        // Update header title
+        const headerElement = document.getElementById('busHeader');
+        if (headerElement) headerElement.textContent = `🛰️ Tracker ${trackerId}`;
+        
+        // Update info panel tracker number
+        const busNumberElement = document.getElementById('busNumber');
+        if (busNumberElement) busNumberElement.textContent = `Tracker ID: ${trackerId}`;
+
+        // Remove or hide elements for unavailable data (Route, Call/SMS links)
+        const routeElement = document.getElementById('busRoute');
+        if (routeElement) routeElement.style.display = 'none'; // Hide route paragraph
+        const callLink = document.getElementById('callLink');
+        if (callLink) callLink.style.display = 'none'; // Hide call icon
+        const smsLink = document.getElementById('smsLink');
+        if (smsLink) smsLink.style.display = 'none'; // Hide SMS icon
+
+      } catch (e) {
+        console.error('Failed to update tracker info display:', e);
       }
     }
 
-    // Initialize socket connection with robust error handling
-    function initSocket() {
-      try {
-        if (window.APP_CONFIG?.createSocketConnection) {
-          socket = window.APP_CONFIG.createSocketConnection();
-          
-          socket.on('connect', () => {
-            console.log('Socket connected');
-            socket.emit('joinBus', busNumber);
-          });
-
-          socket.on('disconnect', () => {
-            console.warn('Socket disconnected');
-          });
-
-          socket.on('connect_error', (err) => {
-            console.error('Socket connection error:', err);
-          });
-
-          // Listen for real-time updates
-          socket.on('busLocation', (data) => {
-            if (data?.busNumber === busNumber) {
-              updateBusPosition(data);
-              hideLoadingOverlay();
-            }
-          });
-        } else {
-          console.warn('Socket connection not available - using mock');
-          socket = {
-            on: () => {},
-            emit: () => {},
-            disconnect: () => {},
-            connected: false
-          };
+     // Function to handle API errors
+     function handleApiError(error, context = "fetching data") {
+        console.error(`API Error (${context}):`, error);
+        try {
+            const lastUpdateElement = document.getElementById('lastUpdate');
+            if (lastUpdateElement) lastUpdateElement.textContent = 'Last update: Error loading data';
+            updateLocationStatus(false, 'Error'); // Update status to show error
+        } catch (e) {
+            console.error('Failed to update error display:', e);
         }
-      } catch (e) {
-        console.error('Socket initialization failed:', e);
-        socket = {
-          on: () => {},
-          emit: () => {},
-          disconnect: () => {},
-          connected: false
-        };
-      }
+        hideLoadingOverlay();
     }
 
-    // Update header with bus number
-    function updateBusInfo() {
-      try {
-        document.getElementById('busHeader').textContent = `🚌 Bus No ${busNumber}`;
-        document.getElementById('busNumber').textContent = `Bus No: ${busNumber}`;
-      } catch (e) {
-        console.error('Failed to update bus info:', e);
-      }
-    }
-
-    // Function to handle API errors
-    function handleApiError(error) {
-      console.error('API Error:', error);
-      try {
-        document.getElementById('busRoute').textContent = 'Route: Error loading data';
-        document.getElementById('lastUpdate').textContent = 'Last update: Error';
-      } catch (e) {
-        console.error('Failed to update error display:', e);
-      }
-      hideLoadingOverlay();
-    }
-
-    // Hide loading overlay
+     // Hide loading overlay
     function hideLoadingOverlay() {
       try {
         loadingOverlay.style.display = 'none';
@@ -150,196 +107,145 @@ function initApplication() {
       }
     }
 
-    // Fetch bus data (route, contact, etc)
-    async function fetchBusData() {
-      try {
-        const result = await fetchApiData(`/api/buses/${busNumber}`);
-        
-        if (result?.data?.bus) {
-          const bus = result.data.bus;
-
-          // Update contact info if available
-          if (bus.contactNumber) {
-            try {
-              document.getElementById('callLink').href = `tel:${bus.contactNumber}`;
-              document.getElementById('smsLink').href = `sms:${bus.contactNumber}`;
-            } catch (e) {
-              console.error('Failed to update contact links:', e);
-            }
-          }
-
-          // Update route info
-          if (bus.route) {
-            try {
-              document.getElementById('busRoute').textContent = `Route: ${bus.route}`;
-            } catch (e) {
-              console.error('Failed to update route:', e);
-            }
-          }
-
-          // If bus has location data and we haven't loaded location yet, update the map immediately
-          if (bus.latitude && bus.longitude && !hasLoadedLocation && map && busMarker) {
-            updateBusPosition({
-              latitude: bus.latitude,
-              longitude: bus.longitude,
-              speed: 0,
-              direction: 0,
-              timestamp: bus.lastUpdated || new Date()
-            });
-            hasLoadedLocation = true;
-            hideLoadingOverlay();
-          }
-
-          // Update location status
-          updateLocationStatus(bus.latitude && bus.longitude);
-        }
-      } catch (error) {
-        console.error('Error fetching bus data:', error);
-        try {
-          document.getElementById('busRoute').textContent = 'Route: Information not available';
-        } catch (e) {
-          console.error('Failed to update route error:', e);
-        }
-        updateLocationStatus(false);
-        handleApiError(error);
-      }
-    }
-
-    // Update location status display
-    function updateLocationStatus(isActive) {
-      try {
-        const statusElement = document.getElementById('locationStatus');
-        if (statusElement) {
-          if (isActive) {
-            statusElement.textContent = 'Location tracking is active.';
-            statusElement.style.color = 'green';
-          } else {
-            statusElement.textContent = 'Location system offline';
-            statusElement.style.color = 'red';
-          }
-        }
-      } catch (e) {
-        console.error('Failed to update location status:', e);
-      }
-    }
-
-    // Fetch latest location data
-    async function fetchLatestLocation() {
-      try {
-        // First try to get the bus data with location
-        const result = await fetchApiData(`/api/buses/${busNumber}`);
-        
-        if (result?.data?.bus?.latitude && result.data.bus.longitude) {
-          updateBusPosition({
-            latitude: result.data.bus.latitude,
-            longitude: result.data.bus.longitude,
-            speed: 0,
-            direction: 0,
-            timestamp: result.data.bus.lastUpdated || new Date()
-          });
-          hideLoadingOverlay();
-        } else {
-          await fetchTrackerLocation();
-        }
-      } catch (error) {
-        console.error('Error fetching bus location:', error);
-        await fetchTrackerLocation();
-      }
-    }
-
-    // Fetch tracker location as fallback
+    // Fetch latest location data for the tracker
     async function fetchTrackerLocation() {
-      try {
-        const result = await fetchApiData(`/trackers/${busNumber}?limit=1`);
-        
-        if (result?.data?.trackers?.length > 0) {
-          updateBusPosition(result.data.trackers[0]);
-          hideLoadingOverlay();
-        } else {
-          try {
-            document.getElementById('lastUpdate').textContent = 'Last update: Waiting for first signal';
-          } catch (e) {
-            console.error('Failed to update last update text:', e);
-          }
-          hideLoadingOverlay();
-        }
-      } catch (error) {
-        console.error('Error fetching tracker location:', error);
         try {
-          document.getElementById('lastUpdate').textContent = 'Last update: Signal lost';
-        } catch (e) {
-          console.error('Failed to update signal lost text:', e);
-        }
-        hideLoadingOverlay();
-      }
-    }
+            // Fetch the tracker data - API returns an array of location points
+            const trackerDataArray = await fetchApiData(`/trackers/${trackerId}`);
 
-    // Function to update bus position on map
-    function updateBusPosition(data) {
-      try {
-        const { latitude, longitude, speed, direction, timestamp } = data;
+            if (trackerDataArray && trackerDataArray.length > 0) {
+                // Sort the array by timestamp in descending order to find the latest entry
+                trackerDataArray.sort((a, b) => {
+                    const timeA = new Date(a.timestamp).getTime();
+                    const timeB = new Date(b.timestamp).getTime();
+                    // Handle invalid timestamps by treating them as older
+                    if (isNaN(timeA)) return 1;
+                    if (isNaN(timeB)) return -1;
+                    return timeB - timeA; // Sort descending
+                });
 
-        // Update marker position if map and marker exist
-        if (map && busMarker) {
-          busMarker.setLatLng([latitude, longitude]);
-        }
-
-        // Update info panel
-        try {
-          document.getElementById('busSpeed').textContent = `Speed: ${speed ? speed.toFixed(1) + ' km/h' : 'N/A'}`;
-        } catch (e) {
-          console.error('Failed to update speed:', e);
-        }
-
-        const now = new Date();
-        const updateTime = new Date(timestamp);
-        const secondsAgo = Math.floor((now - updateTime) / 1000);
-
-        let timeText;
-        if (secondsAgo < 60) {
-          timeText = 'Just now';
-        } else if (secondsAgo < 3600) {
-          timeText = `${Math.floor(secondsAgo / 60)} minutes ago`;
-        } else {
-          timeText = `${Math.floor(secondsAgo / 3600)} hours ago`;
-        }
-
-        try {
-          document.getElementById('lastUpdate').textContent = `Last update: ${timeText}`;
-        } catch (e) {
-          console.error('Failed to update last update:', e);
-        }
-
-        // Update location status based on recency
-        try {
-          const statusElement = document.getElementById('locationStatus');
-          if (statusElement) {
-            if (secondsAgo < 300) {
-              statusElement.textContent = 'Location tracking is active.';
-              statusElement.style.color = 'green';
-            } else if (secondsAgo < 900) {
-              statusElement.textContent = 'Location signal delayed.';
-              statusElement.style.color = 'orange';
+                // The first element after sorting is the latest valid one
+                const latestData = trackerDataArray[0];
+                updateTrackerPosition(latestData); // Update map and info panel
+                if (!hasLoadedLocation) {
+                    hideLoadingOverlay(); // Hide overlay on first successful load
+                    hasLoadedLocation = true;
+                }
             } else {
-              statusElement.textContent = 'Location signal lost.';
-              statusElement.style.color = 'red';
+                // No location data found
+                try {
+                    const lastUpdateElement = document.getElementById('lastUpdate');
+                    if (lastUpdateElement) lastUpdateElement.textContent = 'Last update: No location data available';
+                    updateLocationStatus(false, 'No Data'); // Update status
+                } catch (e) {
+                    console.error('Failed to update no data status:', e);
+                }
+                if (!hasLoadedLocation) hideLoadingOverlay(); // Hide overlay even if no data
             }
-          }
-        } catch (e) {
-          console.error('Failed to update location status:', e);
+        } catch (error) {
+            handleApiError(error, `fetching tracker ${trackerId} location`);
+            if (!hasLoadedLocation) hideLoadingOverlay(); // Hide overlay on error
         }
-
-        // Center map on bus position if map exists
-        if (map) {
-          map.setView([latitude, longitude], 15);
-        }
-        hasLoadedLocation = true;
-      } catch (e) {
-        console.error('Failed to update bus position:', e);
-      }
     }
 
-    // Highlight active footer item
+    // Update location status display based on time and status text
+    function updateLocationStatus(isActive, statusText = '') {
+        try {
+            const statusElement = document.getElementById('locationStatus');
+            if (statusElement) {
+                statusElement.textContent = `Status: ${statusText}`;
+                statusElement.style.color = isActive ? 'green' : 'red';
+            }
+        } catch (e) {
+            console.error('Failed to update location status:', e);
+        }
+    }
+
+
+    // Function to update tracker position on map and info panel
+    function updateTrackerPosition(data) {
+        try {
+            const { latitude, longitude, timestamp } = data; // Extract relevant data
+            const speed = data.speed || 0; // Use speed if available, else 0
+
+            // Validate coordinates
+            if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+                console.warn('Invalid coordinates received:', data);
+                updateLocationStatus(false, 'Invalid Data');
+                return;
+            }
+
+            const latLng = [latitude, longitude];
+
+            // Update marker position if map and marker exist
+            if (map && trackerMarker) {
+                trackerMarker.setLatLng(latLng);
+                trackerMarker.setPopupContent(`Tracker ${trackerId}<br>Updated: ${new Date(timestamp).toLocaleTimeString()}`).openPopup();
+            }
+
+            // Update info panel
+            try {
+                const speedElement = document.getElementById('busSpeed');
+                 // Speed is not in the example API response, setting to N/A
+                if (speedElement) speedElement.textContent = `Speed: N/A`;
+            } catch (e) {
+                console.error('Failed to update speed:', e);
+            }
+
+            const now = new Date();
+            const updateTime = new Date(timestamp);
+            const secondsAgo = Math.round((now - updateTime) / 1000);
+
+            let timeText;
+            let currentStatusText = 'Active'; // Assume active if we have valid data
+            let isActive = true;
+
+            if (isNaN(updateTime.getTime())) {
+                timeText = 'Invalid timestamp';
+                currentStatusText = 'Invalid Data';
+                isActive = false;
+                console.error("Location Status: Invalid timestamp parsed.", { timestamp: timestamp, parsedDate: updateTime });
+            } else if (secondsAgo < 0) {
+                 timeText = 'Timestamp in future?'; // Handle potential clock skew
+                 currentStatusText = 'Time Sync Issue';
+                 isActive = false; // Treat as inactive/error state
+                 console.warn("Location Status: Timestamp is in the future.", { secondsAgo: secondsAgo, lastUpdate: updateTime.toISOString(), now: now.toISOString(), rawTimestamp: timestamp });
+            } else if (secondsAgo < 60) {
+                timeText = 'Just now';
+            } else if (secondsAgo < 3600) { // Less than 1 hour
+                timeText = `${Math.floor(secondsAgo / 60)} min ago`;
+            } else { // Over 1 hour
+                timeText = `${Math.floor(secondsAgo / 3600)} hours ago`;
+            }
+            
+            // Log the update details if active
+            if (isActive) {
+                 console.log(`Location Status: Active. secondsAgo: ${secondsAgo}, Last Update: ${updateTime.toISOString()}, Now: ${now.toISOString()}, Raw Timestamp: ${timestamp}`);
+            }
+
+            try {
+                const lastUpdateElement = document.getElementById('lastUpdate');
+                if (lastUpdateElement) lastUpdateElement.textContent = `Last update: ${timeText}`;
+            } catch (e) {
+                console.error('Failed to update last update:', e);
+            }
+
+            // Update location status text and color
+            updateLocationStatus(isActive, currentStatusText);
+
+
+            // Center map on tracker position only on the first load or if explicitly requested
+            if (map && !hasLoadedLocation) {
+                map.setView(latLng, 15);
+            }
+        } catch (e) {
+            console.error('Failed to update tracker position:', e);
+            updateLocationStatus(false, 'Update Error');
+        }
+    }
+
+
+     // Highlight active footer item
     window.highlight = function(element) {
       try {
         document.querySelectorAll(".footer-item").forEach(item => {
@@ -351,46 +257,57 @@ function initApplication() {
       }
     };
 
-    // Cleanup function
-    function cleanup() {
-      if (refreshInterval) clearInterval(refreshInterval);
-      if (socket?.connected) socket.disconnect();
+     // Cleanup function
+     function cleanup() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        // No socket cleanup needed
     }
 
-    // Initialize socket and start data fetching
-    initSocket();
-    updateBusInfo();
-    fetchBusData();
-    fetchLatestLocation();
+    // --- Initialization ---
 
-    // Set a timeout to hide loading overlay even if we can't get location
-    setTimeout(hideLoadingOverlay, 10000);
+    updateTrackerInfo(); // Update static info like header, tracker ID
+    fetchTrackerLocation(); // Initial fetch for location
 
-    // Periodically check for location updates with network check
-    refreshInterval = setInterval(() => {
-      if (navigator.onLine) {
-        fetchLatestLocation();
-      } else {
-        console.warn('Offline - skipping location update');
-        try {
-          document.getElementById('locationStatus').textContent = 'Offline - no updates';
-          document.getElementById('locationStatus').style.color = 'red';
-        } catch (e) {
-          console.error('Failed to update offline status:', e);
+    // Set a timeout to hide loading overlay if fetching takes too long
+    const loadingTimeout = setTimeout(() => {
+        if (!hasLoadedLocation) {
+            hideLoadingOverlay();
+            console.warn('Loading timeout reached.');
+             try {
+                const lastUpdateElement = document.getElementById('lastUpdate');
+                if (lastUpdateElement) lastUpdateElement.textContent = 'Last update: Loading timed out';
+                updateLocationStatus(false, 'Timeout');
+            } catch(e) { console.error("Error updating timeout status", e); }
         }
-      }
-    }, 10000);
+    }, 15000); // 15 seconds timeout
 
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', cleanup);
+     // Periodically check for location updates
+     refreshInterval = setInterval(() => {
+        if (navigator.onLine) {
+            fetchTrackerLocation();
+        } else {
+            console.warn('Offline - skipping location update');
+            updateLocationStatus(false, 'Offline');
+        }
+    }, 10000); // Refresh every 10 seconds
+
+     // Cleanup on page unload
+     window.addEventListener('beforeunload', () => {
+         cleanup();
+         clearTimeout(loadingTimeout); // Clear timeout on unload
+     });
 
   } catch (initError) {
     console.error('Application initialization failed:', initError);
-    try {
-      document.getElementById('map').innerHTML = '<p class="error">Failed to initialize application. Please refresh the page.</p>';
-      if (loadingOverlay) loadingOverlay.style.display = 'none';
-    } catch (e) {
-      console.error('Failed to display initialization error:', e);
+    // Display error message to the user
+    const mapElement = document.getElementById('map');
+    if (mapElement) {
+        mapElement.innerHTML = '<p class="error">Failed to initialize application. Please refresh the page.</p>';
     }
+    const loadingOverlayElement = document.querySelector('.loading-overlay');
+    if (loadingOverlayElement) loadingOverlayElement.style.display = 'none';
   }
 }
+
+// Start the application once the DOM is ready
+document.addEventListener('DOMContentLoaded', initApplication);
