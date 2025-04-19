@@ -1,3 +1,4 @@
+// location.js
 // Define API Base URL directly
 const API_BASE_URL = "https://iot-tracker-api.vercel.app";
 
