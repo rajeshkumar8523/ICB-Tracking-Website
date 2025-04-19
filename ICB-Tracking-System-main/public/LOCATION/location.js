@@ -9,7 +9,7 @@ function initApplication() {
   try {
     // Use the centralized config for API URL or fallback
     const API_BASE_URL = window.APP_CONFIG?.API_BASE_URL || "https://iot-tracker-api.vercel.app";
-    // const FALLBACK_API_URL = "https://icb-tracking-website.vercel.app";
+    const FALLBACK_API_URL = "https://icb-tracking-website.vercel.app";
     
     // Get bus number from URL or default to ESP32_001
     const urlParams = new URLSearchParams(window.location.search);
