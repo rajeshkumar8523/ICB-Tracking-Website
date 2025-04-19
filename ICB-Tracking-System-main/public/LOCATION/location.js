@@ -41,7 +41,7 @@ function initApplication() {
     let trackerMarker;
     if (map) {
       trackerMarker = L.marker(defaultCoordinates, { icon: trackerIcon }).addTo(map);
-      trackerMarker.bindPopup(`Tracker ${trackerId}`).openPopup();
+      trackerMarker.bindPopup(`BUS ${trackerId}`).openPopup();
     }
 
      // Add loading overlay
