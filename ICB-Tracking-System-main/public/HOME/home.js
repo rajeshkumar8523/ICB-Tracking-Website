@@ -97,15 +97,18 @@ async function fetchAndRenderTracker() {
         // Note: Route and Contact info are not available from the new API
         card.innerHTML = `
             <div class="status-bar ${statusClass}"></div>
-            <div class="bus-number">TRACKER-${deviceId}</div>
+            <div class="bus-number">Bus No_001</div>
             <div class="route">
-                Status: ${statusText}<br>
+                Jadcherla<br>
                 <small>Last Update: ${isNaN(lastUpdate.getTime()) ? 'N/A' : lastUpdate.toLocaleString()}</small>
             </div>
             <div class="icons">
 
-                <a href="../LOCATION/location.html?bus=${deviceId}" class="location-link">
+                <a href="../LOCATION/location.html?bus=${deviceId}" class="location-link" title="View Location">
                     <i class="fas fa-map-marker-alt"></i>
+                </a>
+                <a href="tel:DRIVER_PHONE_NUMBER" class="call-link" title="Call Driver">
+                    <i class="fas fa-phone"></i>
                 </a>
             </div>
         `;
@@ -122,7 +125,57 @@ async function fetchAndRenderTracker() {
             </div>
         `;
         showUpdateNotification('Update failed');
+    } finally {
+        // --- Render Dummy Cards ---
+        // This ensures dummy cards are rendered even if the fetch fails or returns no data
+        renderDummyCards(container);
     }
+}
+
+// Function to render dummy bus cards
+function renderDummyCards(container) {
+    // Ensure container is valid before proceeding
+    if (!container) {
+        console.error("Container element not found for rendering dummy cards.");
+        return;
+    }
+
+    // Optional: Clear only dummy cards if they exist to prevent duplication on refresh
+    // This assumes the live card logic always clears the container first.
+    // const existingDummies = container.querySelectorAll('.dummy-card');
+    // existingDummies.forEach(dummy => dummy.remove());
+
+    const dummyBuses = [
+        { number: '002', route: 'Mahbubnagar', deviceId: 'DUMMY_002', phone: 'DRIVER_PHONE_NUMBER_002' }, // Added placeholder phone
+        { number: '003', route: 'Kothakota', deviceId: 'DUMMY_003', phone: 'DRIVER_PHONE_NUMBER_003' },
+        { number: '004', route: 'Housing Board', deviceId: 'DUMMY_004', phone: 'DRIVER_PHONE_NUMBER_004' },
+        { number: '005', route: 'Wanaparthy', deviceId: 'DUMMY_005', phone: 'DRIVER_PHONE_NUMBER_005' }
+    ];
+
+    dummyBuses.forEach(bus => {
+        const card = document.createElement('div');
+        card.className = 'card dummy-card'; // Add dummy-card class for potential future targeting
+        // Dummy cards have no live status bar or last update
+        card.innerHTML = `
+            <div class="status-bar status-yellow"></div> <!-- Static yellow bar for dummy -->
+            <div class="bus-number">Bus No_${bus.number}</div>
+            <div class="route">
+                ${bus.route}<br>
+                <small>Status: Unknown</small> <!-- Indicate dummy status -->
+            </div>
+            <div class="icons">
+                 <!-- Link location generically or to a specific dummy ID if needed later -->
+                <a href="../LOCATION/location.html?bus=${bus.deviceId}" class="location-link" title="View Location">
+                    <i class="fas fa-map-marker-alt"></i>
+                </a>
+                 <!-- Use specific placeholder phone number -->
+                <a href="tel:${bus.phone}" class="call-link" title="Call Driver">
+                    <i class="fas fa-phone"></i>
+                </a>
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }
 
 
