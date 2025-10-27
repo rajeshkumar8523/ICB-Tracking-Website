@@ -1,0 +1,17 @@
+{
+  "name": "icb-tracking-system",
+  "version": "1.0.0",
+  "description": "ICB Bus Tracking System",
+  "scripts": {
+    "deploy-backend": "cd ICB-backend && vercel",
+    "deploy-frontend": "cd ICB-Tracking-System-main && vercel",
+    "deploy": "npm run deploy-backend && npm run deploy-frontend"
+  },
+  "keywords": [
+    "bus",
+    "tracking",
+    "gps"
+  ],
+  "author": "",
+  "license": "ISC"
+} 
